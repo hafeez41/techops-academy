@@ -19,14 +19,19 @@ export default async function LearnPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Verify enrollment
-  const { data: enrollment } = await supabase
-    .from("enrollments")
-    .select("id")
-    .eq("student_id", user.id)
-    .eq("course_id", params.courseId)
-    .single();
-  if (!enrollment) redirect(`/courses`);
+  // Admins bypass enrollment check
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  const isAdmin = profile?.role === "admin";
+
+  if (!isAdmin) {
+    const { data: enrollment } = await supabase
+      .from("enrollments")
+      .select("id")
+      .eq("student_id", user.id)
+      .eq("course_id", params.courseId)
+      .single();
+    if (!enrollment) redirect(`/courses`);
+  }
 
   // Fetch course + lessons
   const { data: course } = await supabase

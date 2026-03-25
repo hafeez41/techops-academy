@@ -39,16 +39,21 @@ export default async function CourseDetailPage({
 
   if (!course) notFound();
 
-  // Check enrollment
+  // Check enrollment — admins bypass
   let isEnrolled = false;
   if (user) {
-    const { data: enrollment } = await supabase
-      .from("enrollments")
-      .select("id")
-      .eq("student_id", user.id)
-      .eq("course_id", course.id)
-      .single();
-    isEnrolled = !!enrollment;
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    if (profile?.role === "admin") {
+      isEnrolled = true;
+    } else {
+      const { data: enrollment } = await supabase
+        .from("enrollments")
+        .select("id")
+        .eq("student_id", user.id)
+        .eq("course_id", course.id)
+        .single();
+      isEnrolled = !!enrollment;
+    }
   }
 
   const { count: enrollmentCount } = await supabase
@@ -127,23 +132,6 @@ export default async function CourseDetailPage({
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Instructor */}
-            <div>
-              <h2 className="text-lg font-semibold mb-3">Instructor</h2>
-              <Link href={`/instructors/${course.instructor_id}`} className="flex items-center gap-3 group">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={course.profiles?.avatar_url ?? ""} />
-                  <AvatarFallback>{instructorInitials}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium group-hover:underline">{instructorName}</p>
-                  {course.profiles?.bio && (
-                    <p className="text-sm text-muted-foreground line-clamp-1">{course.profiles.bio}</p>
-                  )}
-                </div>
-              </Link>
             </div>
 
             {/* Curriculum */}

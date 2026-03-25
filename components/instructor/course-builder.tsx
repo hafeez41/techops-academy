@@ -154,7 +154,10 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
   const [title, setTitle] = useState(course?.title ?? "");
   const [description, setDescription] = useState(course?.description ?? "");
   const [price, setPrice] = useState(String(course?.price ?? "0"));
-  const [category, setCategory] = useState(course?.category ?? "");
+  const [categories, setCategories] = useState<string[]>((course as any)?.categories ?? []);
+  const [catOpen, setCatOpen] = useState(false);
+  const toggleCategory = (cat: string) =>
+    setCategories((prev) => prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]);
   const [isPublished, setIsPublished] = useState(course?.is_published ?? false);
   const [thumbnailUrl, setThumbnailUrl] = useState(course?.thumbnail_url ?? "");
   const [lessons, setLessons] = useState<(Lesson & { _uploading?: boolean; _uploadPct?: number })[]>(initialLessons);
@@ -185,7 +188,7 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
           slug,
           description,
           price: parseFloat(price) || 0,
-          category: category || null,
+          categories,
           is_published: isPublished,
           thumbnail_url: thumbnailUrl || null,
         })
@@ -203,7 +206,7 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
           title,
           description,
           price: parseFloat(price) || 0,
-          category: category || null,
+          categories,
           is_published: isPublished,
           thumbnail_url: thumbnailUrl || null,
         })
@@ -374,15 +377,28 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Category</Label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <option value="">Select category</option>
-                    {CAT_LIST.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  <Label>Categories</Label>
+                  <div className="relative">
+                    <button type="button" onClick={() => setCatOpen(!catOpen)}
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <span className="truncate text-left">
+                        {categories.length === 0 ? "Select categories" : categories.join(", ")}
+                      </span>
+                      <span className="ml-2 shrink-0 text-muted-foreground">▾</span>
+                    </button>
+                    {catOpen && (
+                      <div className="absolute z-20 mt-1 w-full rounded-md border border-border bg-popover shadow-lg">
+                        <div className="max-h-52 overflow-y-auto p-1">
+                          {CAT_LIST.map((c) => (
+                            <label key={c} className="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm hover:bg-muted">
+                              <input type="checkbox" checked={categories.includes(c)} onChange={() => toggleCategory(c)} className="accent-brand" />
+                              {c}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Price (USD)</Label>
