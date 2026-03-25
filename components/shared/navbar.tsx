@@ -66,22 +66,34 @@ export function Navbar() {
         {/* Nav links */}
         <nav className="hidden md:flex items-center gap-7 text-sm">
           <Link
+            href="/"
+            className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+          >
+            Home
+          </Link>
+          <Link
             href="/courses"
             className="text-muted-foreground hover:text-foreground transition-colors font-medium"
           >
-            Courses
+            All Courses
           </Link>
           <Link
-            href="/courses?category=DevOps"
+            href="/#testimonials"
             className="text-muted-foreground hover:text-foreground transition-colors font-medium"
           >
-            DevOps
+            Testimonials
           </Link>
           <Link
-            href="/courses?category=Cloud"
+            href="/#faqs"
             className="text-muted-foreground hover:text-foreground transition-colors font-medium"
           >
-            Cloud
+            FAQs
+          </Link>
+          <Link
+            href="/#contact"
+            className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+          >
+            Contact
           </Link>
         </nav>
 
