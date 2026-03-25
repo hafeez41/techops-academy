@@ -30,7 +30,7 @@ interface Lesson {
   mux_asset_id: string | null; mux_playback_id: string | null;
   duration_seconds: number | null; position: number; is_free_preview: boolean;
   created_at: string;
-  _uploading?: boolean; _files?: LessonFile[];
+  _uploading?: boolean; _uploadPct?: number; _files?: LessonFile[];
 }
 interface Course {
   id: string; title: string; slug: string; description: string | null;
@@ -95,22 +95,35 @@ function SortableLesson({
           />
 
           {/* Video */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">Video</span>
-            {lesson.mux_playback_id ? (
-              <span className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
-                <CheckCircle className="h-3.5 w-3.5" /> Ready
-              </span>
-            ) : lesson._uploading ? (
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Clock className="h-3.5 w-3.5 animate-pulse" /> Processing…
-              </span>
-            ) : (
-              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                <Upload className="h-3.5 w-3.5" /> Upload video
-                <input type="file" accept="video/*" className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) onVideoUpload(lesson.id, f); }} />
-              </label>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">Video</span>
+              {lesson.mux_playback_id ? (
+                <span className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+                  <CheckCircle className="h-3.5 w-3.5" /> Ready
+                </span>
+              ) : lesson._uploading ? (
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5 animate-pulse" />
+                  {(lesson._uploadPct ?? 0) < 100
+                    ? `Uploading… ${lesson._uploadPct ?? 0}%`
+                    : "Processing…"}
+                </span>
+              ) : (
+                <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  <Upload className="h-3.5 w-3.5" /> Upload video
+                  <input type="file" accept="video/*" className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) onVideoUpload(lesson.id, f); }} />
+                </label>
+              )}
+            </div>
+            {lesson._uploading && (lesson._uploadPct ?? 0) < 100 && (
+              <div className="ml-[4.5rem] h-1.5 w-full max-w-xs rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-brand transition-all duration-300"
+                  style={{ width: `${lesson._uploadPct ?? 0}%` }}
+                />
+              </div>
             )}
           </div>
 
@@ -249,10 +262,28 @@ export function AdminCourseBuilder({
   };
 
   const handleVideoUpload = async (lessonId: string, file: File) => {
-    setLessons((p) => p.map((l) => l.id === lessonId ? { ...l, _uploading: true } : l));
+    setLessons((p) => p.map((l) => l.id === lessonId ? { ...l, _uploading: true, _uploadPct: 0 } : l));
+
+    // Get signed Mux upload URL
     const res = await fetch("/api/mux/upload-url", { method: "POST" });
     const { uploadId, url } = await res.json();
-    await fetch(url, { method: "PUT", body: file });
+
+    // XHR upload with progress tracking — handles 500MB+ files
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          setLessons((p) => p.map((l) => l.id === lessonId ? { ...l, _uploadPct: pct } : l));
+        }
+      });
+      xhr.addEventListener("load", () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject()));
+      xhr.addEventListener("error", reject);
+      xhr.open("PUT", url);
+      xhr.send(file);
+    });
+
+    // Poll Mux until asset is ready (max 40 attempts = ~2 min for large files)
     let attempts = 0;
     const poll = async () => {
       attempts++;
@@ -260,11 +291,11 @@ export function AdminCourseBuilder({
       const { status, assetId, playbackId } = await statusRes.json();
       if (status === "ready" && playbackId) {
         await supabase.from("lessons").update({ mux_asset_id: assetId, mux_playback_id: playbackId }).eq("id", lessonId);
-        setLessons((p) => p.map((l) => l.id === lessonId ? { ...l, mux_asset_id: assetId, mux_playback_id: playbackId, _uploading: false } : l));
-      } else if (attempts < 20) {
+        setLessons((p) => p.map((l) => l.id === lessonId ? { ...l, mux_asset_id: assetId, mux_playback_id: playbackId, _uploading: false, _uploadPct: undefined } : l));
+      } else if (attempts < 40) {
         setTimeout(poll, 3000);
       } else {
-        setLessons((p) => p.map((l) => l.id === lessonId ? { ...l, _uploading: false } : l));
+        setLessons((p) => p.map((l) => l.id === lessonId ? { ...l, _uploading: false, _uploadPct: undefined } : l));
       }
     };
     setTimeout(poll, 3000);

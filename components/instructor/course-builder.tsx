@@ -54,7 +54,7 @@ function SortableLesson({
   onDelete,
   onUpload,
 }: {
-  lesson: Lesson & { _uploading?: boolean; _uploadPct?: number };
+  lesson: Lesson & { _uploading?: boolean; _uploadPct?: number; };
   onUpdate: (id: string, fields: Partial<Lesson>) => void;
   onDelete: (id: string) => void;
   onUpload: (lessonId: string, file: File) => void;
@@ -96,31 +96,43 @@ function SortableLesson({
           </div>
 
           {/* Video upload */}
-          <div className="flex items-center gap-3">
-            {lesson.mux_playback_id ? (
-              <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
-                <CheckCircle className="h-3.5 w-3.5" />
-                Video ready
-              </div>
-            ) : lesson._uploading ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Clock className="h-3.5 w-3.5 animate-pulse" />
-                Processing…
-              </div>
-            ) : (
-              <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                <Upload className="h-3.5 w-3.5" />
-                Upload video
-                <input
-                  type="file"
-                  accept="video/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) onUpload(lesson.id, file);
-                  }}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-3">
+              {lesson.mux_playback_id ? (
+                <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                  <CheckCircle className="h-3.5 w-3.5" />
+                  Video ready
+                </div>
+              ) : lesson._uploading ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5 animate-pulse" />
+                  {(lesson._uploadPct ?? 0) < 100
+                    ? `Uploading… ${lesson._uploadPct ?? 0}%`
+                    : "Processing…"}
+                </div>
+              ) : (
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  <Upload className="h-3.5 w-3.5" />
+                  Upload video
+                  <input
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) onUpload(lesson.id, file);
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+            {lesson._uploading && (lesson._uploadPct ?? 0) < 100 && (
+              <div className="h-1.5 w-full max-w-xs rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-brand transition-all duration-300"
+                  style={{ width: `${lesson._uploadPct ?? 0}%` }}
                 />
-              </label>
+              </div>
             )}
           </div>
         </div>
@@ -145,7 +157,7 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
   const [category, setCategory] = useState(course?.category ?? "");
   const [isPublished, setIsPublished] = useState(course?.is_published ?? false);
   const [thumbnailUrl, setThumbnailUrl] = useState(course?.thumbnail_url ?? "");
-  const [lessons, setLessons] = useState<(Lesson & { _uploading?: boolean })[]>(initialLessons);
+  const [lessons, setLessons] = useState<(Lesson & { _uploading?: boolean; _uploadPct?: number })[]>(initialLessons);
   const [saving, setSaving] = useState(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [courseId, setCourseId] = useState(course?.id ?? "");
@@ -256,18 +268,29 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
   };
 
   const handleVideoUpload = async (lessonId: string, file: File) => {
-    setLessons((prev) => prev.map((l) => l.id === lessonId ? { ...l, _uploading: true } : l));
+    setLessons((prev) => prev.map((l) => l.id === lessonId ? { ...l, _uploading: true, _uploadPct: 0 } : l));
 
-    // 1. Get signed upload URL
+    // 1. Get signed Mux upload URL
     const res = await fetch("/api/mux/upload-url", { method: "POST" });
     const { uploadId, url } = await res.json();
 
-    // 2. Upload directly to Mux
-    await fetch(url, { method: "PUT", body: file });
+    // 2. XHR upload with progress — handles 500MB+ files reliably
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          setLessons((prev) => prev.map((l) => l.id === lessonId ? { ...l, _uploadPct: pct } : l));
+        }
+      });
+      xhr.addEventListener("load", () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject()));
+      xhr.addEventListener("error", reject);
+      xhr.open("PUT", url);
+      xhr.send(file);
+    });
 
-    // 3. Poll until asset ready (max 20 attempts = ~60s)
+    // 3. Poll until asset ready (max 40 attempts = ~2 min for large files)
     let attempts = 0;
-    const MAX_ATTEMPTS = 20;
     const poll = async () => {
       attempts++;
       const statusRes = await fetch(`/api/mux/asset-status/${uploadId}`);
@@ -280,16 +303,15 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
         setLessons((prev) =>
           prev.map((l) =>
             l.id === lessonId
-              ? { ...l, mux_asset_id: assetId, mux_playback_id: playbackId, _uploading: false }
+              ? { ...l, mux_asset_id: assetId, mux_playback_id: playbackId, _uploading: false, _uploadPct: undefined }
               : l
           )
         );
-      } else if (attempts < MAX_ATTEMPTS) {
+      } else if (attempts < 40) {
         setTimeout(poll, 3000);
       } else {
-        // Timed out — mark as no longer uploading so UI doesn't hang
         setLessons((prev) =>
-          prev.map((l) => l.id === lessonId ? { ...l, _uploading: false } : l)
+          prev.map((l) => l.id === lessonId ? { ...l, _uploading: false, _uploadPct: undefined } : l)
         );
       }
     };
