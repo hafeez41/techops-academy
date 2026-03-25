@@ -20,9 +20,13 @@ import {
   MonitorCheck,
 } from "lucide-react";
 
-const fadeUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
+// All whileInView elements start visible (opacity: 1) so content never hides
+// if framer-motion has SSR hydration timing issues
+const scrollReveal = {
+  initial: { opacity: 1, y: 10 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true },
+  transition: { duration: 0.4 },
 };
 
 const courses = [
@@ -32,7 +36,6 @@ const courses = [
     description:
       "Complete DevOps training from Linux fundamentals through CI/CD pipelines, containerization, Kubernetes, and cloud deployment.",
     badge: "Most Popular",
-    badgeVariant: "brand" as const,
     icon: Server,
     features: [
       "Linux & Bash scripting",
@@ -49,7 +52,6 @@ const courses = [
     description:
       "Full accounting curriculum covering bookkeeping, financial statements, payroll, tax preparation, and accounting software.",
     badge: null,
-    badgeVariant: null,
     icon: BriefcaseBusiness,
     features: [
       "Bookkeeping fundamentals",
@@ -66,7 +68,6 @@ const courses = [
     description:
       "Specialized accounts payable training covering invoice processing, vendor management, reconciliation, and compliance.",
     badge: null,
-    badgeVariant: null,
     icon: MonitorCheck,
     features: [
       "Invoice processing workflows",
@@ -102,19 +103,13 @@ export default function HomePage() {
     <div className="flex min-h-screen flex-col">
       <Navbar />
 
-      {/* Hero */}
+      {/* Hero — CSS animations, no framer-motion opacity:0 initial state */}
       <section className="relative overflow-hidden">
-        {/* Background grid */}
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,hsl(var(--border)/0.5)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.5)_1px,transparent_1px)] bg-[size:64px_64px]" />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-background/60 to-background" />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,hsl(var(--border))_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border))_1px,transparent_1px)] bg-[size:64px_64px] opacity-40" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-background/50 to-background" />
 
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24 sm:py-36">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="max-w-3xl"
-          >
+          <div className="max-w-3xl animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Badge className="mb-6 bg-brand/10 text-brand border-brand/20 hover:bg-brand/10">
               Practical. Career-ready. Results.
             </Badge>
@@ -156,19 +151,14 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
       {/* Course Bundles */}
       <section className="py-24 px-4">
         <div className="mx-auto max-w-7xl">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-14"
-          >
+          <motion.div {...scrollReveal} className="mb-14">
             <Badge variant="outline" className="mb-4 border-brand/30 text-brand">
               Our Programs
             </Badge>
@@ -184,10 +174,10 @@ export default function HomePage() {
               return (
                 <motion.div
                   key={course.title}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 1, y: 10 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
+                  transition={{ delay: i * 0.1, duration: 0.4 }}
                 >
                   <Card className="group h-full flex flex-col border-border/60 hover:border-brand/40 hover:shadow-lg hover:shadow-brand/5 transition-all duration-300">
                     <CardContent className="flex flex-col gap-5 p-6 flex-1">
@@ -242,12 +232,7 @@ export default function HomePage() {
       {/* Career Paths */}
       <section className="py-24 px-4 bg-muted/30">
         <div className="mx-auto max-w-7xl">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-14"
-          >
+          <motion.div {...scrollReveal} className="mb-14">
             <Badge variant="outline" className="mb-4 border-brand/30 text-brand">
               Career Outcomes
             </Badge>
@@ -263,15 +248,15 @@ export default function HomePage() {
               return (
                 <motion.div
                   key={path.title}
-                  initial={{ opacity: 0, y: 16 }}
+                  initial={{ opacity: 1, y: 8 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.07 }}
+                  transition={{ delay: i * 0.07, duration: 0.3 }}
                 >
                   <Card className="group border-border/60 hover:border-brand/30 hover:bg-brand/5 transition-all duration-200 cursor-default">
                     <CardContent className="flex flex-col gap-3 p-5">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted group-hover:bg-brand/10 transition-colors">
-                        <Icon className="h-4.5 w-4.5 text-muted-foreground group-hover:text-brand transition-colors" />
+                        <Icon className="h-4 w-4 text-muted-foreground group-hover:text-brand transition-colors" />
                       </div>
                       <div>
                         <p className="font-semibold text-sm leading-snug">{path.title}</p>
@@ -291,12 +276,7 @@ export default function HomePage() {
       {/* Tech Categories */}
       <section className="py-24 px-4">
         <div className="mx-auto max-w-7xl">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-14"
-          >
+          <motion.div {...scrollReveal} className="mb-14">
             <Badge variant="outline" className="mb-4 border-brand/30 text-brand">
               All Subjects
             </Badge>
@@ -307,23 +287,18 @@ export default function HomePage() {
           </motion.div>
 
           <div className="flex flex-wrap gap-3">
-            {techCategories.map((cat, i) => {
+            {techCategories.map((cat) => {
               const Icon = cat.icon;
               return (
-                <motion.div
+                <Link
                   key={cat.label}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.05 }}
+                  href={`/courses?category=${encodeURIComponent(cat.label)}`}
                 >
-                  <Link href={`/courses?category=${encodeURIComponent(cat.label)}`}>
-                    <div className="flex items-center gap-2 rounded-full border border-border/60 bg-card px-4 py-2 text-sm font-medium text-muted-foreground hover:border-brand/40 hover:text-foreground hover:bg-brand/5 transition-all duration-200">
-                      <Icon className="h-3.5 w-3.5" />
-                      {cat.label}
-                    </div>
-                  </Link>
-                </motion.div>
+                  <div className="flex items-center gap-2 rounded-full border border-border/60 bg-card px-4 py-2 text-sm font-medium text-muted-foreground hover:border-brand/40 hover:text-foreground hover:bg-brand/5 transition-all duration-200">
+                    <Icon className="h-3.5 w-3.5" />
+                    {cat.label}
+                  </div>
+                </Link>
               );
             })}
           </div>
@@ -334,11 +309,7 @@ export default function HomePage() {
       <section className="py-24 px-4 bg-muted/30">
         <div className="mx-auto max-w-7xl">
           <div className="grid grid-cols-1 gap-16 lg:grid-cols-2 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-            >
+            <motion.div {...scrollReveal}>
               <Badge variant="outline" className="mb-4 border-brand/30 text-brand">
                 Our Mission
               </Badge>
@@ -372,35 +343,22 @@ export default function HomePage() {
               </div>
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="grid grid-cols-2 gap-4"
-            >
+            <div className="grid grid-cols-2 gap-4">
               {[
                 { value: "3", label: "Career bundles", sub: "DevOps, Accounting, AP" },
                 { value: "5+", label: "Career paths", sub: "Mapped to real job titles" },
                 { value: "100%", label: "Online & self-paced", sub: "Learn on your schedule" },
                 { value: "$0", label: "Get started free", sub: "Upgrade when ready" },
-              ].map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                >
-                  <Card className="border-border/60 h-full">
-                    <CardContent className="p-5">
-                      <p className="text-3xl font-bold text-brand">{stat.value}</p>
-                      <p className="mt-1 font-semibold text-sm">{stat.label}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{stat.sub}</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
+              ].map((stat) => (
+                <Card key={stat.label} className="border-border/60 h-full">
+                  <CardContent className="p-5">
+                    <p className="text-3xl font-bold text-brand">{stat.value}</p>
+                    <p className="mt-1 font-semibold text-sm">{stat.label}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{stat.sub}</p>
+                  </CardContent>
+                </Card>
               ))}
-            </motion.div>
+            </div>
           </div>
         </div>
       </section>
