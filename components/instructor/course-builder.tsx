@@ -149,6 +149,7 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
   const [saving, setSaving] = useState(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [courseId, setCourseId] = useState(course?.id ?? "");
+  const [saveWarning, setSaveWarning] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -213,9 +214,10 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
 
   const handleThumbnailUpload = async (file: File) => {
     if (!courseId) {
-      alert("Save the course first before uploading a thumbnail.");
+      setSaveWarning("Save the course first before uploading a thumbnail.");
       return;
     }
+    setSaveWarning("");
     setThumbnailUploading(true);
     const path = `${courseId}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("thumbnails").upload(path, file, { upsert: true });
@@ -229,9 +231,10 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
 
   const handleAddLesson = async () => {
     if (!courseId) {
-      alert("Save the course first before adding lessons.");
+      setSaveWarning("Save the course first before adding lessons.");
       return;
     }
+    setSaveWarning("");
     const position = lessons.length;
     const { data, error } = await supabase
       .from("lessons")
@@ -262,8 +265,11 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
     // 2. Upload directly to Mux
     await fetch(url, { method: "PUT", body: file });
 
-    // 3. Poll until asset ready
+    // 3. Poll until asset ready (max 20 attempts = ~60s)
+    let attempts = 0;
+    const MAX_ATTEMPTS = 20;
     const poll = async () => {
+      attempts++;
       const statusRes = await fetch(`/api/mux/asset-status/${uploadId}`);
       const { status, assetId, playbackId } = await statusRes.json();
       if (status === "ready" && playbackId) {
@@ -278,8 +284,13 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
               : l
           )
         );
-      } else {
+      } else if (attempts < MAX_ATTEMPTS) {
         setTimeout(poll, 3000);
+      } else {
+        // Timed out — mark as no longer uploading so UI doesn't hang
+        setLessons((prev) =>
+          prev.map((l) => l.id === lessonId ? { ...l, _uploading: false } : l)
+        );
       }
     };
     setTimeout(poll, 3000);
@@ -298,6 +309,12 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
+      {saveWarning && (
+        <div className="mb-4 flex items-center justify-between rounded-md border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-700 dark:text-yellow-400">
+          <span>{saveWarning}</span>
+          <button onClick={() => setSaveWarning("")} className="ml-4 text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-200">✕</button>
+        </div>
+      )}
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">{courseId ? "Edit course" : "New course"}</h1>
         <div className="flex items-center gap-3">

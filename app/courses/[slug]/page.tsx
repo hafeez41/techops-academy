@@ -51,6 +51,11 @@ export default async function CourseDetailPage({
     isEnrolled = !!enrollment;
   }
 
+  const { count: enrollmentCount } = await supabase
+    .from("enrollments")
+    .select("id", { count: "exact", head: true })
+    .eq("course_id", course.id);
+
   const lessons: Lesson[] = (course.lessons ?? []).sort(
     (a: Lesson, b: Lesson) => a.position - b.position
   );
@@ -109,7 +114,7 @@ export default async function CourseDetailPage({
                 )}
                 <div className="flex items-center gap-1">
                   <Users className="h-4 w-4" />
-                  <span>{/* enrollment count via separate query if needed */}students</span>
+                  <span>{enrollmentCount ?? 0} students</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <BookOpen className="h-4 w-4" />

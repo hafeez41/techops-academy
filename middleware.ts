@@ -31,9 +31,21 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Protect dashboard and learn routes
-  if (!user && (pathname.startsWith("/dashboard") || pathname.startsWith("/learn") || pathname.startsWith("/instructor"))) {
+  // Protect authenticated routes
+  if (!user && (pathname.startsWith("/dashboard") || pathname.startsWith("/learn") || pathname.startsWith("/instructor") || pathname.startsWith("/admin"))) {
     return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  // Protect admin routes — check role
+  if (user && pathname.startsWith("/admin")) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    if (profile?.role !== "admin") {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
   }
 
   return supabaseResponse;
