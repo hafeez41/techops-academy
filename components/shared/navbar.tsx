@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
-import { GraduationCap, LogOut, LayoutDashboard, BookOpen } from "lucide-react";
+import { GraduationCap, LogOut, LayoutDashboard, BookOpen, Shield } from "lucide-react";
 import type { Profile } from "@/types";
 
 export function Navbar() {
@@ -125,6 +125,12 @@ export function Navbar() {
                   <DropdownMenuItem onClick={() => router.push("/instructor")}>
                     <BookOpen className="mr-2 h-4 w-4" />
                     Instructor Hub
+                  </DropdownMenuItem>
+                )}
+                {profile.role === "admin" && (
+                  <DropdownMenuItem onClick={() => router.push("/admin")}>
+                    <Shield className="mr-2 h-4 w-4 text-red-500" />
+                    Admin Dashboard
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
