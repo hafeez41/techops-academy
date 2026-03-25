@@ -14,7 +14,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { GraduationCap, LogOut, LayoutDashboard, BookOpen, PlusCircle } from "lucide-react";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
+import { GraduationCap, LogOut, LayoutDashboard, BookOpen } from "lucide-react";
 import type { Profile } from "@/types";
 
 export function Navbar() {
@@ -55,27 +56,53 @@ export function Navbar() {
       initial={{ y: -10, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md"
+      className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/90 backdrop-blur-md"
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-lg">
-          <GraduationCap className="h-6 w-6" />
-          <span>TechOps Academy</span>
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand">
+            <GraduationCap className="h-4.5 w-4.5 text-brand-foreground" />
+          </div>
+          <span className="font-bold text-base tracking-tight">
+            TechOps<span className="text-brand"> Academy</span>
+          </span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-          <Link href="/courses" className="hover:text-foreground transition-colors">
+        {/* Nav links */}
+        <nav className="hidden md:flex items-center gap-7 text-sm">
+          <Link
+            href="/courses"
+            className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+          >
             Courses
+          </Link>
+          <Link
+            href="/courses?category=DevOps"
+            className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+          >
+            DevOps
+          </Link>
+          <Link
+            href="/courses?category=Cloud"
+            className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+          >
+            Cloud
           </Link>
         </nav>
 
-        <div className="flex items-center gap-3">
+        {/* Right side */}
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+
           {loading ? null : profile ? (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger className="rounded-full outline-none ring-2 ring-transparent hover:ring-brand/50 transition-all">
                 <Avatar className="h-8 w-8 cursor-pointer">
                   <AvatarImage src={profile.avatar_url ?? ""} />
-                  <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                  <AvatarFallback className="text-xs bg-brand text-brand-foreground font-semibold">
+                    {initials}
+                  </AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
@@ -84,22 +111,18 @@ export function Navbar() {
                   <p className="text-xs text-muted-foreground capitalize">{profile.role}</p>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard">
-                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                    Dashboard
-                  </Link>
+                <DropdownMenuItem onClick={() => router.push("/dashboard")}>
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Dashboard
                 </DropdownMenuItem>
                 {profile.role === "instructor" && (
-                  <DropdownMenuItem asChild>
-                    <Link href="/instructor">
-                      <BookOpen className="mr-2 h-4 w-4" />
-                      Instructor Hub
-                    </Link>
+                  <DropdownMenuItem onClick={() => router.push("/instructor")}>
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    Instructor Hub
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                <DropdownMenuItem onClick={handleSignOut} variant="destructive">
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign out
                 </DropdownMenuItem>
@@ -107,10 +130,14 @@ export function Navbar() {
             </DropdownMenu>
           ) : (
             <>
-              <Button variant="ghost" size="sm" asChild>
+              <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
                 <Link href="/login">Sign in</Link>
               </Button>
-              <Button size="sm" asChild>
+              <Button
+                size="sm"
+                asChild
+                className="bg-brand text-brand-foreground hover:bg-brand/90 font-semibold"
+              >
                 <Link href="/signup">Get started</Link>
               </Button>
             </>
