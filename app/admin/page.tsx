@@ -52,7 +52,7 @@ export default async function AdminPage() {
           totalEnrollments: totalEnrollments ?? 0,
         }}
         recentUsers={recentUsers ?? []}
-        courses={allCourses ?? []}
+        courses={(allCourses ?? []) as any[]}
       />
     </div>
   );
