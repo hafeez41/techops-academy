@@ -28,14 +28,22 @@ export function VideoPlayer({
   const router = useRouter();
 
   const handleMarkComplete = async () => {
-    if (completed) return;
     setMarking(true);
-    await fetch("/api/progress", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lessonId, courseId }),
-    });
-    setCompleted(true);
+    if (completed) {
+      await fetch("/api/progress", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonId }),
+      });
+      setCompleted(false);
+    } else {
+      await fetch("/api/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonId, courseId }),
+      });
+      setCompleted(true);
+    }
     setMarking(false);
     router.refresh();
   };
@@ -53,7 +61,7 @@ export function VideoPlayer({
           playbackId={playbackId}
           streamType="on-demand"
           style={{ width: "100%", height: "100%" }}
-          onEnded={handleMarkComplete}
+          onEnded={() => { if (!completed) handleMarkComplete(); }}
         />
       </div>
 
@@ -62,14 +70,14 @@ export function VideoPlayer({
           variant={completed ? "secondary" : "default"}
           size="sm"
           onClick={handleMarkComplete}
-          disabled={completed || marking}
+          disabled={marking}
         >
           {marking ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <CheckCircle className="mr-2 h-4 w-4" />
+            <CheckCircle className={`mr-2 h-4 w-4 ${completed ? "text-green-500" : ""}`} />
           )}
-          {completed ? "Completed" : "Mark as complete"}
+          {completed ? "Mark as incomplete" : "Mark as complete"}
         </Button>
 
         {nextLessonId && (

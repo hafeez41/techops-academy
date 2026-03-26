@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -154,14 +154,16 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
   const [title, setTitle] = useState(course?.title ?? "");
   const [description, setDescription] = useState(course?.description ?? "");
   const [price, setPrice] = useState(String(course?.price ?? "0"));
-  const [categories, setCategories] = useState<string[]>((course as any)?.categories ?? []);
+  const [categories, setCategories] = useState<string[]>(course?.categories ?? []);
   const [catOpen, setCatOpen] = useState(false);
+  const catRef = useRef<HTMLDivElement>(null);
   const toggleCategory = (cat: string) =>
     setCategories((prev) => prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]);
   const [isPublished, setIsPublished] = useState(course?.is_published ?? false);
   const [thumbnailUrl, setThumbnailUrl] = useState(course?.thumbnail_url ?? "");
   const [lessons, setLessons] = useState<(Lesson & { _uploading?: boolean; _uploadPct?: number })[]>(initialLessons);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [courseId, setCourseId] = useState(course?.id ?? "");
   const [saveWarning, setSaveWarning] = useState("");
@@ -170,6 +172,18 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+
+  // Close category dropdown on outside click
+  useEffect(() => {
+    if (!catOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (catRef.current && !catRef.current.contains(e.target as Node)) {
+        setCatOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [catOpen]);
 
   const generateSlug = (t: string) =>
     t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -224,6 +238,8 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
     }
 
     setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
     router.refresh();
   };
 
@@ -354,9 +370,9 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
               {isPublished ? "Published" : "Draft"}
             </Label>
           </div>
-          <Button onClick={handleSaveCourse} disabled={saving || !title}>
+          <Button onClick={handleSaveCourse} disabled={saving || !title} className={saved ? "bg-green-600 hover:bg-green-600 text-white" : ""}>
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Save
+            {saving ? "Saving…" : saved ? "Saved!" : "Save"}
           </Button>
         </div>
       </div>
@@ -378,7 +394,7 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Categories</Label>
-                  <div className="relative">
+                  <div className="relative" ref={catRef}>
                     <button type="button" onClick={() => setCatOpen(!catOpen)}
                       className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                       <span className="truncate text-left">
@@ -387,7 +403,7 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
                       <span className="ml-2 shrink-0 text-muted-foreground">▾</span>
                     </button>
                     {catOpen && (
-                      <div className="absolute z-20 mt-1 w-full rounded-md border border-border bg-popover shadow-lg">
+                      <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg">
                         <div className="max-h-52 overflow-y-auto p-1">
                           {CAT_LIST.map((c) => (
                             <label key={c} className="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm hover:bg-muted">

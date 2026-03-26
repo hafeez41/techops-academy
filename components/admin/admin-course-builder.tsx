@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,11 +30,11 @@ interface Lesson {
   mux_asset_id: string | null; mux_playback_id: string | null;
   duration_seconds: number | null; position: number; is_free_preview: boolean;
   created_at: string;
-  _uploading?: boolean; _uploadPct?: number; _files?: LessonFile[];
+  _uploading?: boolean; _uploadPct?: number; _uploadError?: string; _files?: LessonFile[];
 }
 interface Course {
   id: string; title: string; slug: string; description: string | null;
-  thumbnail_url: string | null; price: number; category: string | null;
+  thumbnail_url: string | null; price: number; categories: string[];
   is_published: boolean; instructor_id: string; created_at: string;
 }
 
@@ -102,6 +102,8 @@ function SortableLesson({
                 <span className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
                   <CheckCircle className="h-3.5 w-3.5" /> Ready
                 </span>
+              ) : lesson._uploadError ? (
+                <span className="text-xs text-destructive">{lesson._uploadError}</span>
               ) : lesson._uploading ? (
                 <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Clock className="h-3.5 w-3.5 animate-pulse" />
@@ -168,8 +170,9 @@ export function AdminCourseBuilder({
   const [title, setTitle] = useState(initialCourse?.title ?? "");
   const [description, setDescription] = useState(initialCourse?.description ?? "");
   const [price, setPrice] = useState(String(initialCourse?.price ?? "0"));
-  const [categories, setCategories] = useState<string[]>((initialCourse as any)?.categories ?? []);
+  const [categories, setCategories] = useState<string[]>(initialCourse?.categories ?? []);
   const [catOpen, setCatOpen] = useState(false);
+  const catRef = useRef<HTMLDivElement>(null);
 
   const toggleCategory = (cat: string) =>
     setCategories((prev) => prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]);
@@ -178,6 +181,7 @@ export function AdminCourseBuilder({
   const [courseId, setCourseId] = useState(initialCourse?.id ?? "");
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [thumbUploading, setThumbUploading] = useState(false);
   const [warning, setWarning] = useState("");
   const [loaded, setLoaded] = useState(false);
@@ -201,10 +205,22 @@ export function AdminCourseBuilder({
   }, [supabase]);
 
   // Load on mount if editing existing course
-  useState(() => {
+  useEffect(() => {
     if (initialCourse?.id) loadLessons(initialCourse.id);
     else setLoaded(true);
-  });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Close category dropdown on outside click
+  useEffect(() => {
+    if (!catOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (catRef.current && !catRef.current.contains(e.target as Node)) {
+        setCatOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [catOpen]);
 
   const generateSlug = (t: string) =>
     t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -230,6 +246,8 @@ export function AdminCourseBuilder({
       }
     }
     setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
   };
 
   const handleThumbnail = async (file: File) => {
@@ -299,7 +317,9 @@ export function AdminCourseBuilder({
       } else if (attempts < 40) {
         setTimeout(poll, 3000);
       } else {
-        setLessons((p) => p.map((l) => l.id === lessonId ? { ...l, _uploading: false, _uploadPct: undefined } : l));
+        setLessons((p) => p.map((l) => l.id === lessonId
+          ? { ...l, _uploading: false, _uploadPct: undefined, _uploadError: "Processing timed out. The video may still appear shortly — refresh the page to check." }
+          : l));
       }
     };
     setTimeout(poll, 3000);
@@ -368,7 +388,7 @@ export function AdminCourseBuilder({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Categories</Label>
-                  <div className="relative">
+                  <div className="relative" ref={catRef}>
                     <button type="button" onClick={() => setCatOpen(!catOpen)}
                       className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                       <span className="truncate text-left">
@@ -377,7 +397,7 @@ export function AdminCourseBuilder({
                       <span className="ml-2 shrink-0 text-muted-foreground">▾</span>
                     </button>
                     {catOpen && (
-                      <div className="absolute z-20 mt-1 w-full rounded-md border border-border bg-popover shadow-lg">
+                      <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg">
                         <div className="max-h-52 overflow-y-auto p-1">
                           {CAT_LIST.map((c) => (
                             <label key={c} className="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm hover:bg-muted">
@@ -452,9 +472,9 @@ export function AdminCourseBuilder({
                 </div>
               </div>
 
-              <Button onClick={handleSave} disabled={saving || !title} className="w-full bg-brand text-brand-foreground hover:bg-brand/90">
+              <Button onClick={handleSave} disabled={saving || !title} className={`w-full ${saved ? "bg-green-600 hover:bg-green-600" : "bg-brand hover:bg-brand/90"} text-brand-foreground`}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {saving ? "Saving…" : courseId ? "Save changes" : "Create course"}
+                {saving ? "Saving…" : saved ? "Saved!" : courseId ? "Save changes" : "Create course"}
               </Button>
             </CardContent>
           </Card>

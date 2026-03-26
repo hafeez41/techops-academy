@@ -3,10 +3,11 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Navbar } from "@/components/shared/navbar";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Lock, CheckCircle, Circle } from "lucide-react";
+import { Lock, CheckCircle, Circle, Paperclip } from "lucide-react";
 import { VideoPlayer } from "@/components/shared/video-player";
 import type { Lesson } from "@/types";
+
+interface LessonFile { id: string; name: string; url: string; size?: number | null }
 
 export const metadata = { title: "Learn" };
 
@@ -33,15 +34,15 @@ export default async function LearnPage({
     if (!enrollment) redirect(`/courses`);
   }
 
-  // Fetch course + lessons
+  // Fetch course + lessons + files
   const { data: course } = await supabase
     .from("courses")
-    .select("*, lessons(*)")
+    .select("*, lessons(*, lesson_files(*))")
     .eq("id", params.courseId)
     .single();
   if (!course) notFound();
 
-  const lessons: Lesson[] = (course.lessons ?? []).sort(
+  const lessons: (Lesson & { lesson_files: LessonFile[] })[] = (course.lessons ?? []).sort(
     (a: Lesson, b: Lesson) => a.position - b.position
   );
 
@@ -120,7 +121,7 @@ export default async function LearnPage({
               </div>
             )}
 
-            <div className="mt-6">
+            <div className="mt-6 space-y-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h1 className="text-xl font-bold">{currentLesson.title}</h1>
@@ -137,6 +138,26 @@ export default async function LearnPage({
                   </Badge>
                 )}
               </div>
+
+              {currentLesson.lesson_files?.length > 0 && (
+                <div className="rounded-lg border border-border p-4 space-y-2">
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <Paperclip className="h-4 w-4" /> Attachments
+                  </p>
+                  {currentLesson.lesson_files.map((file) => (
+                    <a
+                      key={file.id}
+                      href={file.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{file.name}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </main>
