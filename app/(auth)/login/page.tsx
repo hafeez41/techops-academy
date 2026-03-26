@@ -25,11 +25,20 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data: loginData, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setError(error.message);
       setLoading(false);
     } else {
+      // Ensure a profile row exists — may be missing if email confirmation
+      // didn't route through /auth/callback (e.g. old accounts, misconfigured redirects)
+      if (loginData.user) {
+        await supabase.from("profiles").upsert({
+          id: loginData.user.id,
+          full_name: loginData.user.user_metadata?.full_name ?? null,
+          role: "student",
+        }, { onConflict: "id", ignoreDuplicates: true });
+      }
       router.push("/dashboard");
       router.refresh();
     }
