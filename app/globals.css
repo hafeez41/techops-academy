@@ -30,13 +30,13 @@
 
     --border: 220 13% 88%;
     --input: 220 13% 88%;
-    --ring: 43 100% 51%;
+    --ring: 38 78% 52%;
 
-    /* Gold brand color: #FFB606 */
-    --brand: 43 100% 51%;
-    --brand-foreground: 224 20% 10%;
+    /* Amber-gold brand color */
+    --brand: 38 78% 52%;
+    --brand-foreground: 224 20% 8%;
 
-    --radius: 0.5rem;
+    --radius: 0.6rem;
   }
 
   .dark {
@@ -66,10 +66,10 @@
 
     --border: 224 16% 18%;
     --input: 224 16% 18%;
-    --ring: 43 100% 51%;
+    --ring: 38 78% 52%;
 
-    --brand: 43 100% 51%;
-    --brand-foreground: 224 20% 7%;
+    --brand: 38 78% 52%;
+    --brand-foreground: 224 20% 5%;
   }
 }
 
@@ -80,6 +80,11 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    letter-spacing: -0.01em;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.02em;
   }
 
   /* Smooth theme transitions on specific semantic elements only.
@@ -103,11 +108,11 @@
   }
 
   .gradient-brand {
-    background: linear-gradient(135deg, hsl(var(--brand)) 0%, hsl(38 100% 55%) 100%);
+    background: linear-gradient(135deg, hsl(var(--brand)) 0%, hsl(32 72% 56%) 100%);
   }
 
   .text-gradient-brand {
-    background: linear-gradient(135deg, hsl(var(--brand)) 0%, hsl(38 100% 65%) 100%);
+    background: linear-gradient(135deg, hsl(var(--brand)) 0%, hsl(32 72% 60%) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
