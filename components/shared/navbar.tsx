@@ -23,19 +23,34 @@ export function Navbar() {
   const router = useRouter();
   const supabase = createClient();
 
+  const fetchProfile = async (userId: string) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
+    setProfile(data ?? null);
+  };
+
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (user) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-        setProfile(data);
-      }
-      setLoading(false);
+    // Initial load
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) fetchProfile(user.id);
+      else setLoading(false);
     });
-  }, []);
+
+    // Stay in sync with auth state changes (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        fetchProfile(session.user.id).then(() => setLoading(false));
+      } else {
+        setProfile(null);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -65,34 +80,19 @@ export function Navbar() {
 
         {/* Nav links */}
         <nav className="hidden md:flex items-center gap-7 text-sm">
-          <Link
-            href="/"
-            className="text-muted-foreground hover:text-foreground transition-colors font-medium"
-          >
+          <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
             Home
           </Link>
-          <Link
-            href="/courses"
-            className="text-muted-foreground hover:text-foreground transition-colors font-medium"
-          >
+          <Link href="/courses" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
             All Courses
           </Link>
-          <Link
-            href="/#testimonials"
-            className="text-muted-foreground hover:text-foreground transition-colors font-medium"
-          >
+          <Link href="/#testimonials" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
             Testimonials
           </Link>
-          <Link
-            href="/#faqs"
-            className="text-muted-foreground hover:text-foreground transition-colors font-medium"
-          >
+          <Link href="/#faqs" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
             FAQs
           </Link>
-          <Link
-            href="/#contact"
-            className="text-muted-foreground hover:text-foreground transition-colors font-medium"
-          >
+          <Link href="/#contact" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
             Contact
           </Link>
         </nav>
@@ -145,11 +145,7 @@ export function Navbar() {
               <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
                 <Link href="/login">Sign in</Link>
               </Button>
-              <Button
-                size="sm"
-                asChild
-                className="bg-brand text-brand-foreground hover:bg-brand/90 font-semibold"
-              >
+              <Button size="sm" asChild className="bg-brand text-brand-foreground hover:bg-brand/90 font-semibold">
                 <Link href="/signup">Get started</Link>
               </Button>
             </>

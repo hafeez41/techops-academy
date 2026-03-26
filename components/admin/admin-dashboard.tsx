@@ -18,7 +18,7 @@ interface Profile {
 }
 interface Course {
   id: string; title: string; slug: string; is_published: boolean;
-  price: number; category: string | null; created_at: string;
+  price: number; categories: string[]; created_at: string;
   instructor_id: string; description: string | null;
   thumbnail_url: string | null;
   profiles: { full_name: string | null } | null;
@@ -61,7 +61,7 @@ export function AdminDashboard({
 
   const deleteCourse = async (id: string) => {
     setDeletingId(id);
-    await supabase.from("courses").delete().eq("id", id);
+    await fetch(`/api/courses/${id}`, { method: "DELETE" });
     setCourses((p) => p.filter((c) => c.id !== id));
     setDeletingId(null);
     setConfirmDelete(null);
@@ -319,7 +319,7 @@ export function AdminDashboard({
                         <td className="px-6 py-3 font-medium max-w-xs">
                           <span className="line-clamp-1">{c.title}</span>
                         </td>
-                        <td className="px-6 py-3 text-muted-foreground">{c.category ?? "—"}</td>
+                        <td className="px-6 py-3 text-muted-foreground">{c.categories?.join(", ") || "—"}</td>
                         <td className="px-6 py-3">${c.price}</td>
                         <td className="px-6 py-3">
                           <Badge variant={c.is_published ? "secondary" : "outline"}>

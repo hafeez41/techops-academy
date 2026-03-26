@@ -20,10 +20,16 @@ export default async function LearnPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Admins bypass enrollment check
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  // Fetch profile, course, and progress in parallel
+  const [{ data: profile }, { data: course }, { data: progress }] = await Promise.all([
+    supabase.from("profiles").select("role").eq("id", user.id).single(),
+    supabase.from("courses").select("id, title, lessons(*, lesson_files(*))").eq("id", params.courseId).single(),
+    supabase.from("progress").select("lesson_id").eq("student_id", user.id).eq("course_id", params.courseId),
+  ]);
+
   const isAdmin = profile?.role === "admin";
 
+  // Non-admins must be enrolled
   if (!isAdmin) {
     const { data: enrollment } = await supabase
       .from("enrollments")
@@ -34,12 +40,6 @@ export default async function LearnPage({
     if (!enrollment) redirect(`/courses`);
   }
 
-  // Fetch course + lessons + files
-  const { data: course } = await supabase
-    .from("courses")
-    .select("*, lessons(*, lesson_files(*))")
-    .eq("id", params.courseId)
-    .single();
   if (!course) notFound();
 
   const lessons: (Lesson & { lesson_files: LessonFile[] })[] = (course.lessons ?? []).sort(
@@ -48,13 +48,6 @@ export default async function LearnPage({
 
   const currentLesson = lessons.find((l) => l.id === params.lessonId);
   if (!currentLesson) notFound();
-
-  // Fetch progress
-  const { data: progress } = await supabase
-    .from("progress")
-    .select("lesson_id")
-    .eq("student_id", user.id)
-    .eq("course_id", params.courseId);
 
   const completedIds = new Set(progress?.map((p) => p.lesson_id) ?? []);
   const currentIdx = lessons.findIndex((l) => l.id === params.lessonId);

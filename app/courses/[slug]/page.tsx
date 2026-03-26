@@ -30,36 +30,49 @@ export default async function CourseDetailPage({
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const { data: course } = await supabase
-    .from("courses")
-    .select(`*, profiles(*), lessons(*), reviews(*, profiles(*))`)
-    .eq("slug", params.slug)
-    .eq("is_published", true)
-    .single();
+  // Fetch course and viewer profile in parallel
+  const [{ data: course }, { data: profile }] = await Promise.all([
+    supabase
+      .from("courses")
+      .select(`*, profiles(*), lessons(*), reviews(*, profiles(*))`)
+      .eq("slug", params.slug)
+      .eq("is_published", true)
+      .single(),
+    user
+      ? supabase.from("profiles").select("role").eq("id", user.id).single()
+      : Promise.resolve({ data: null }),
+  ]);
 
   if (!course) notFound();
 
-  // Check enrollment — admins bypass
-  let isEnrolled = false;
-  if (user) {
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-    if (profile?.role === "admin") {
-      isEnrolled = true;
-    } else {
-      const { data: enrollment } = await supabase
+  const isAdmin = profile?.role === "admin";
+
+  // Check enrollment and fetch count in parallel
+  let isEnrolled = isAdmin;
+  let enrollmentCount: number | null = null;
+
+  if (user && !isAdmin) {
+    const [{ data: enrollment }, { count }] = await Promise.all([
+      supabase
         .from("enrollments")
         .select("id")
         .eq("student_id", user.id)
         .eq("course_id", course.id)
-        .single();
-      isEnrolled = !!enrollment;
-    }
+        .single(),
+      supabase
+        .from("enrollments")
+        .select("id", { count: "exact", head: true })
+        .eq("course_id", course.id),
+    ]);
+    isEnrolled = !!enrollment;
+    enrollmentCount = count;
+  } else {
+    const { count } = await supabase
+      .from("enrollments")
+      .select("id", { count: "exact", head: true })
+      .eq("course_id", course.id);
+    enrollmentCount = count;
   }
-
-  const { count: enrollmentCount } = await supabase
-    .from("enrollments")
-    .select("id", { count: "exact", head: true })
-    .eq("course_id", course.id);
 
   const lessons: Lesson[] = (course.lessons ?? []).sort(
     (a: Lesson, b: Lesson) => a.position - b.position
@@ -97,10 +110,12 @@ export default async function CourseDetailPage({
           {/* Left — course details */}
           <div className="lg:col-span-2 space-y-8">
             <div>
-              {course.category && (
-                <Badge variant="outline" className="mb-3">
-                  {course.category}
-                </Badge>
+              {course.categories?.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-1.5">
+                  {course.categories.map((cat: string) => (
+                    <Badge key={cat} variant="outline">{cat}</Badge>
+                  ))}
+                </div>
               )}
               <h1 className="text-3xl font-bold tracking-tight">{course.title}</h1>
               {course.description && (
@@ -241,7 +256,7 @@ export default async function CourseDetailPage({
                       </Link>
                     </Button>
                   ) : (
-                    <EnrollButton courseId={course.id} userId={user?.id ?? null} courseName={course.title} />
+                    <EnrollButton courseId={course.id} userId={user?.id ?? null} />
                   )}
 
                   <Separator />

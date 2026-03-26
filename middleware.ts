@@ -36,14 +36,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Protect admin routes — check role
-  if (user && pathname.startsWith("/admin")) {
+  // Protect role-specific routes
+  if (user && (pathname.startsWith("/admin") || pathname.startsWith("/instructor"))) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .single();
-    if (profile?.role !== "admin") {
+    if (pathname.startsWith("/admin") && profile?.role !== "admin") {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+    if (pathname.startsWith("/instructor") && profile?.role !== "instructor" && profile?.role !== "admin") {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }

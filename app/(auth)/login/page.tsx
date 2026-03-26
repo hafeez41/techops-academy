@@ -119,6 +119,11 @@ export default function LoginPage() {
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Sign in
               </Button>
+              <div className="text-center">
+                <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4">
+                  Forgot password?
+                </Link>
+              </div>
             </form>
           </CardContent>
           <CardFooter className="justify-center text-sm text-muted-foreground">

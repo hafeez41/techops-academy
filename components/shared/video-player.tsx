@@ -1,10 +1,19 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import MuxPlayer from "@mux/mux-player-react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, ChevronRight, Loader2 } from "lucide-react";
+
+const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full bg-black flex items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-white/50" />
+    </div>
+  ),
+});
 
 interface VideoPlayerProps {
   playbackId: string;

@@ -19,24 +19,25 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*")
+    .select("role, full_name")
     .eq("id", user.id)
     .single();
 
   if (profile?.role === "instructor") redirect("/instructor");
+  if (profile?.role === "admin") redirect("/admin");
 
-  // Enrolled courses with lessons
-  const { data: enrollments } = await supabase
-    .from("enrollments")
-    .select("*, courses(*, lessons(*))")
-    .eq("student_id", user.id)
-    .order("enrolled_at", { ascending: false });
-
-  // Progress data
-  const { data: progress } = await supabase
-    .from("progress")
-    .select("lesson_id, course_id")
-    .eq("student_id", user.id);
+  // Fetch enrollments and progress in parallel
+  const [{ data: enrollments }, { data: progress }] = await Promise.all([
+    supabase
+      .from("enrollments")
+      .select("*, courses(id, title, thumbnail_url, lessons(id, position))")
+      .eq("student_id", user.id)
+      .order("enrolled_at", { ascending: false }),
+    supabase
+      .from("progress")
+      .select("lesson_id, course_id")
+      .eq("student_id", user.id),
+  ]);
 
   const completedLessonIds = new Set(progress?.map((p) => p.lesson_id) ?? []);
 

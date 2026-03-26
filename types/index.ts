@@ -17,7 +17,7 @@ export interface Course {
   description: string | null;
   thumbnail_url: string | null;
   price: number;
-  category: string | null;
+  categories: string[];
   is_published: boolean;
   created_at: string;
   profiles?: Profile;

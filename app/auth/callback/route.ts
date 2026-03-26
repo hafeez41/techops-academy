@@ -27,8 +27,16 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error && data.user) {
+      // Ensure profile exists (handles Google OAuth users where trigger may not have fired)
+      const meta = data.user.user_metadata;
+      await supabase.from("profiles").upsert({
+        id: data.user.id,
+        full_name: meta?.full_name ?? meta?.name ?? null,
+        avatar_url: meta?.avatar_url ?? meta?.picture ?? null,
+        role: "student",
+      }, { onConflict: "id", ignoreDuplicates: true });
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

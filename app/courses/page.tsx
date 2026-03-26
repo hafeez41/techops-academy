@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { CATEGORIES } from "@/types";
 import type { Course } from "@/types";
 
+export const revalidate = 300;
 export const metadata = { title: "Courses" };
 
 export default async function CoursesPage({
