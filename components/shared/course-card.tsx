@@ -8,9 +8,10 @@ import type { Course } from "@/types";
 
 interface CourseCardProps {
   course: Course;
+  isAdmin?: boolean;
 }
 
-export function CourseCard({ course }: CourseCardProps) {
+export function CourseCard({ course, isAdmin = false }: CourseCardProps) {
   const instructorName = course.profiles?.full_name ?? "Instructor";
   const initials = instructorName
     .split(" ")
@@ -44,12 +45,12 @@ export function CourseCard({ course }: CourseCardProps) {
               Free
             </Badge>
           )}
-          {course.category && (
+          {course.categories?.[0] && (
             <Badge
               variant="secondary"
               className="absolute top-2 right-2 text-xs bg-background/80 backdrop-blur-sm"
             >
-              {course.category}
+              {course.categories[0]}
             </Badge>
           )}
         </div>
@@ -65,25 +66,29 @@ export function CourseCard({ course }: CourseCardProps) {
             </p>
           )}
 
-          <div className="flex items-center gap-2 mt-auto pt-1">
-            <Avatar className="h-5 w-5">
-              <AvatarImage src={course.profiles?.avatar_url ?? ""} />
-              <AvatarFallback className="text-[10px] bg-brand text-brand-foreground font-semibold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-xs text-muted-foreground truncate">{instructorName}</span>
-          </div>
+          {isAdmin && (
+            <div className="flex items-center gap-2 mt-auto pt-1">
+              <Avatar className="h-5 w-5">
+                <AvatarImage src={course.profiles?.avatar_url ?? ""} />
+                <AvatarFallback className="text-[10px] bg-brand text-brand-foreground font-semibold">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-xs text-muted-foreground truncate">{instructorName}</span>
+            </div>
+          )}
 
           <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border/50 pt-3 mt-1">
             <div className="flex items-center gap-1">
               <BookOpen className="h-3.5 w-3.5" />
               {lessonCount} lessons
             </div>
-            <div className="flex items-center gap-1">
-              <Users className="h-3.5 w-3.5" />
-              {studentCount.toLocaleString()} students
-            </div>
+            {isAdmin && (
+              <div className="flex items-center gap-1">
+                <Users className="h-3.5 w-3.5" />
+                {studentCount.toLocaleString()} students
+              </div>
+            )}
             <span className="font-bold text-foreground text-sm">
               {course.price === 0 ? "Free" : `$${course.price.toLocaleString()}`}
             </span>

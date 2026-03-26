@@ -16,13 +16,19 @@ export default async function CoursesPage({
   const supabase = createClient();
   const { category, q } = searchParams;
 
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("role").eq("id", user.id).single()
+    : { data: null };
+  const isAdmin = profile?.role === "admin";
+
   let query = supabase
     .from("courses")
     .select(`*, profiles(*), lessons(count), enrollments(count)`)
     .eq("is_published", true)
     .order("created_at", { ascending: false });
 
-  if (category) query = query.eq("category", category);
+  if (category) query = query.contains("categories", [category]);
   if (q) query = query.ilike("title", `%${q}%`);
 
   const { data: courses } = await query;
@@ -71,7 +77,7 @@ export default async function CoursesPage({
         {courses && courses.length > 0 ? (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {courses.map((course: Course) => (
-              <CourseCard key={course.id} course={course} />
+              <CourseCard key={course.id} course={course} isAdmin={isAdmin} />
             ))}
           </div>
         ) : (
