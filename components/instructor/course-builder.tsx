@@ -380,7 +380,7 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Course details */}
         <div className="lg:col-span-2 space-y-6">
-          <Card>
+          <Card className="overflow-visible">
             <CardHeader><CardTitle className="text-base">Course details</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
