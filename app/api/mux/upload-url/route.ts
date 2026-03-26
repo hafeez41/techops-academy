@@ -16,11 +16,14 @@ export async function POST() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const mux = getMux();
-  const upload = await mux.video.uploads.create({
-    cors_origin: process.env.NEXT_PUBLIC_APP_URL!,
-    new_asset_settings: { playback_policy: ["public"] },
-  });
-
-  return NextResponse.json({ uploadId: upload.id, url: upload.url });
+  try {
+    const mux = getMux();
+    const upload = await mux.video.uploads.create({
+      cors_origin: process.env.NEXT_PUBLIC_APP_URL!,
+      new_asset_settings: { playback_policy: ["public"] },
+    });
+    return NextResponse.json({ uploadId: upload.id, url: upload.url });
+  } catch {
+    return NextResponse.json({ error: "Failed to create upload URL" }, { status: 500 });
+  }
 }

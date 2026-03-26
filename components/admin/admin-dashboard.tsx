@@ -128,6 +128,12 @@ export function AdminDashboard({
     );
   };
 
+  const statColors = {
+    blue:  { bg: "bg-blue-500/10",  icon: "text-blue-500"  },
+    green: { bg: "bg-green-500/10", icon: "text-green-500" },
+    brand: { bg: "bg-brand/10",     icon: "text-brand"     },
+  } as const;
+
   // If we're in the course builder view
   if (builderCourse !== null) {
     return (
@@ -172,14 +178,14 @@ export function AdminDashboard({
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-3">
             {[
-              { label: "Total Users", value: initialStats.totalUsers, icon: Users, color: "blue" },
-              { label: "Total Courses", value: courses.length, icon: BookOpen, color: "green" },
-              { label: "Enrollments", value: initialStats.totalEnrollments, icon: TrendingUp, color: "brand" },
+              { label: "Total Users", value: initialStats.totalUsers, icon: Users, color: "blue" as const },
+              { label: "Total Courses", value: courses.length, icon: BookOpen, color: "green" as const },
+              { label: "Enrollments", value: initialStats.totalEnrollments, icon: TrendingUp, color: "brand" as const },
             ].map(({ label, value, icon: Icon, color }) => (
               <Card key={label}>
                 <CardContent className="flex items-center gap-4 p-6">
-                  <div className={`rounded-full p-3 bg-${color}-500/10`}>
-                    <Icon className={`h-5 w-5 text-${color}-500`} />
+                  <div className={`rounded-full p-3 ${statColors[color].bg}`}>
+                    <Icon className={`h-5 w-5 ${statColors[color].icon}`} />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">{label}</p>

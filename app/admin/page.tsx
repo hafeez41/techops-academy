@@ -33,7 +33,7 @@ export default async function AdminPage() {
       .limit(50),
     supabase
       .from("courses")
-      .select("id, title, slug, is_published, price, category, created_at, instructor_id, profiles(full_name)")
+      .select("id, title, slug, is_published, price, categories, description, thumbnail_url, created_at, instructor_id, profiles(full_name)")
       .order("created_at", { ascending: false }),
   ]);
 
@@ -47,7 +47,7 @@ export default async function AdminPage() {
           totalEnrollments: totalEnrollments ?? 0,
         }}
         recentUsers={recentUsers ?? []}
-        courses={(allCourses ?? []) as any[]}
+        courses={allCourses ?? []}
         adminId={user.id}
       />
     </div>

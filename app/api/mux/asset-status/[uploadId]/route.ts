@@ -10,17 +10,21 @@ export async function GET(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const mux = getMux();
-  const upload = await mux.video.uploads.retrieve(params.uploadId);
+  try {
+    const mux = getMux();
+    const upload = await mux.video.uploads.retrieve(params.uploadId);
 
-  if (upload.status === "asset_created" && upload.asset_id) {
-    const asset = await mux.video.assets.retrieve(upload.asset_id);
-    return NextResponse.json({
-      status: asset.status,
-      assetId: asset.id,
-      playbackId: asset.playback_ids?.[0]?.id ?? null,
-    });
+    if (upload.status === "asset_created" && upload.asset_id) {
+      const asset = await mux.video.assets.retrieve(upload.asset_id);
+      return NextResponse.json({
+        status: asset.status,
+        assetId: asset.id,
+        playbackId: asset.playback_ids?.[0]?.id ?? null,
+      });
+    }
+
+    return NextResponse.json({ status: upload.status, assetId: null, playbackId: null });
+  } catch {
+    return NextResponse.json({ error: "Failed to retrieve asset status" }, { status: 500 });
   }
-
-  return NextResponse.json({ status: upload.status, assetId: null, playbackId: null });
 }

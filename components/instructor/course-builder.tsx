@@ -39,7 +39,7 @@ import {
   CheckCircle,
   Clock,
 } from "lucide-react";
-import type { Course, Lesson, CATEGORIES } from "@/types";
+import type { Course, Lesson } from "@/types";
 import { CATEGORIES as CAT_LIST } from "@/types";
 
 interface CourseBuilderProps {
