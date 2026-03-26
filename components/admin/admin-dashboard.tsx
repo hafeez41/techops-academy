@@ -11,6 +11,7 @@ import {
   Users, BookOpen, TrendingUp, Eye, EyeOff, Shield,
   GraduationCap, UserCheck, PlusCircle, Pencil, Trash2,
 } from "lucide-react";
+import { AnalyticsPanel } from "@/components/shared/analytics-panel";
 
 interface Profile {
   id: string; full_name: string | null; email: string | null;
@@ -39,7 +40,7 @@ export function AdminDashboard({
   const router = useRouter();
   const supabase = createClient();
 
-  const [tab, setTab] = useState<"overview" | "users" | "courses">("overview");
+  const [tab, setTab] = useState<"overview" | "users" | "courses" | "analytics">("overview");
   const [courses, setCourses] = useState<Course[]>(initialCourses);
   const [users, setUsers] = useState<Profile[]>(initialUsers);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -163,7 +164,7 @@ export function AdminDashboard({
 
       {/* Tabs */}
       <div className="mb-6 flex gap-1 border-b border-border">
-        {(["overview", "users", "courses"] as const).map((t) => (
+        {(["overview", "users", "courses", "analytics"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
               tab === t ? "border-brand text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
@@ -306,6 +307,9 @@ export function AdminDashboard({
           </CardContent>
         </Card>
       )}
+
+      {/* ── ANALYTICS ── */}
+      {tab === "analytics" && <AnalyticsPanel />}
 
       {/* ── COURSES ── */}
       {tab === "courses" && (
