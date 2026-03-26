@@ -51,6 +51,16 @@ export function AdminDashboard({
 
   const refresh = () => router.refresh();
 
+  const handleBuilderBack = async () => {
+    setBuilderCourse(null);
+    const { data } = await supabase
+      .from("courses")
+      .select("id, title, slug, is_published, price, categories, created_at, instructor_id, description, thumbnail_url, profiles(full_name)")
+      .order("created_at", { ascending: false });
+    if (data) setCourses(data as Course[]);
+    router.refresh();
+  };
+
   // --- Course actions ---
   const togglePublish = async (course: Course) => {
     setUpdatingId(course.id);
@@ -125,7 +135,7 @@ export function AdminDashboard({
         <AdminCourseBuilder
           course={builderCourse === "new" ? null : builderCourse as Course}
           adminId={adminId}
-          onBack={() => { setBuilderCourse(null); refresh(); }}
+          onBack={handleBuilderBack}
         />
       </main>
     );
