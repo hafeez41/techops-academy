@@ -23,6 +23,8 @@ interface VideoPlayerProps {
   isEnrolled: boolean;
   nextLessonId: string | null;
   nextCourseId: string | null;
+  /** Render only the mark-complete / next buttons, no video element */
+  controlsOnly?: boolean;
 }
 
 export function VideoPlayer({
@@ -33,6 +35,7 @@ export function VideoPlayer({
   isEnrolled,
   nextLessonId,
   nextCourseId,
+  controlsOnly = false,
 }: VideoPlayerProps) {
   const [marking, setMarking] = useState(false);
   const [completed, setCompleted] = useState(isCompleted);
@@ -67,14 +70,16 @@ export function VideoPlayer({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg overflow-hidden bg-black aspect-video">
-        <MuxPlayer
-          playbackId={playbackId}
-          streamType="on-demand"
-          style={{ width: "100%", height: "100%" }}
-          onEnded={() => { if (!completed) handleMarkComplete(); }}
-        />
-      </div>
+      {!controlsOnly && (
+        <div className="rounded-lg overflow-hidden bg-black aspect-video">
+          <MuxPlayer
+            playbackId={playbackId}
+            streamType="on-demand"
+            style={{ width: "100%", height: "100%" }}
+            onEnded={() => { if (!completed) handleMarkComplete(); }}
+          />
+        </div>
+      )}
 
       {isEnrolled && (
         <div className="flex items-center gap-3">

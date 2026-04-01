@@ -26,8 +26,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { StudentsTab } from "@/components/instructor/students-tab";
 import {
   GripVertical,
   PlusCircle,
@@ -38,8 +38,14 @@ import {
   EyeOff,
   CheckCircle,
   Clock,
+  Video,
+  FileText,
+  Link2,
+  LayoutTemplate,
+  Users,
+  BookOpen,
 } from "lucide-react";
-import type { Course, Lesson } from "@/types";
+import type { Course, Lesson, LessonType, ProgressionMode } from "@/types";
 import { CATEGORIES as CAT_LIST } from "@/types";
 
 interface CourseBuilderProps {
@@ -48,13 +54,20 @@ interface CourseBuilderProps {
   userId: string;
 }
 
+const LESSON_TYPES: { value: LessonType; label: string; icon: React.ReactNode }[] = [
+  { value: "video",  label: "Video",   icon: <Video className="h-3.5 w-3.5" /> },
+  { value: "text",   label: "Text",    icon: <FileText className="h-3.5 w-3.5" /> },
+  { value: "link",   label: "Link",    icon: <Link2 className="h-3.5 w-3.5" /> },
+  { value: "mixed",  label: "Mixed",   icon: <LayoutTemplate className="h-3.5 w-3.5" /> },
+];
+
 function SortableLesson({
   lesson,
   onUpdate,
   onDelete,
   onUpload,
 }: {
-  lesson: Lesson & { _uploading?: boolean; _uploadPct?: number; };
+  lesson: Lesson & { _uploading?: boolean; _uploadPct?: number };
   onUpdate: (id: string, fields: Partial<Lesson>) => void;
   onDelete: (id: string) => void;
   onUpload: (lessonId: string, file: File) => void;
@@ -68,6 +81,11 @@ function SortableLesson({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const type: LessonType = lesson.lesson_type ?? "video";
+  const showVideo = type === "video" || type === "mixed";
+  const showText  = type === "text"  || type === "mixed";
+  const showLink  = type === "link";
+
   return (
     <div ref={setNodeRef} style={style} className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-start gap-3">
@@ -78,7 +96,9 @@ function SortableLesson({
         >
           <GripVertical className="h-4 w-4" />
         </button>
+
         <div className="flex-1 space-y-3">
+          {/* Title + free-preview toggle */}
           <div className="flex items-center gap-3">
             <Input
               placeholder="Lesson title"
@@ -95,9 +115,28 @@ function SortableLesson({
             </div>
           </div>
 
-          {/* Video upload */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-3">
+          {/* Lesson type selector */}
+          <div className="flex items-center gap-1.5">
+            {LESSON_TYPES.map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => onUpdate(lesson.id, { lesson_type: t.value })}
+                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors border ${
+                  type === t.value
+                    ? "border-brand/60 bg-brand/10 text-brand"
+                    : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                }`}
+              >
+                {t.icon}
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Video upload (video + mixed) */}
+          {showVideo && (
+            <div className="space-y-1.5">
               {lesson.mux_playback_id ? (
                 <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
                   <CheckCircle className="h-3.5 w-3.5" />
@@ -125,17 +164,49 @@ function SortableLesson({
                   />
                 </label>
               )}
+              {lesson._uploading && (lesson._uploadPct ?? 0) < 100 && (
+                <div className="h-1.5 w-full max-w-xs rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-brand transition-all duration-300"
+                    style={{ width: `${lesson._uploadPct ?? 0}%` }}
+                  />
+                </div>
+              )}
             </div>
-            {lesson._uploading && (lesson._uploadPct ?? 0) < 100 && (
-              <div className="h-1.5 w-full max-w-xs rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-brand transition-all duration-300"
-                  style={{ width: `${lesson._uploadPct ?? 0}%` }}
-                />
-              </div>
-            )}
-          </div>
+          )}
+
+          {/* Text content (text + mixed) */}
+          {showText && (
+            <Textarea
+              placeholder="Write your lesson content in Markdown…&#10;&#10;## Heading&#10;**bold**, *italic*, `code`&#10;- bullet lists&#10;&#10;Supports full GFM."
+              value={lesson.content ?? ""}
+              onChange={(e) => onUpdate(lesson.id, { content: e.target.value })}
+              rows={6}
+              className="text-sm font-mono resize-y"
+            />
+          )}
+
+          {/* External URL (link) */}
+          {showLink && (
+            <div className="space-y-1.5">
+              <Input
+                type="url"
+                placeholder="https://example.com/resource"
+                value={lesson.external_url ?? ""}
+                onChange={(e) => onUpdate(lesson.id, { external_url: e.target.value })}
+                className="h-8 text-sm"
+              />
+              <Textarea
+                placeholder="Optional: describe what students will find at this link…"
+                value={lesson.content ?? ""}
+                onChange={(e) => onUpdate(lesson.id, { content: e.target.value })}
+                rows={2}
+                className="text-sm"
+              />
+            </div>
+          )}
         </div>
+
         <button
           onClick={() => onDelete(lesson.id)}
           className="text-muted-foreground hover:text-destructive transition-colors"
@@ -151,35 +222,41 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
   const router = useRouter();
   const supabase = createClient();
 
+  const [activeTab, setActiveTab] = useState<"curriculum" | "students">("curriculum");
+
+  // Course fields
   const [title, setTitle] = useState(course?.title ?? "");
   const [description, setDescription] = useState(course?.description ?? "");
   const [price, setPrice] = useState(String(course?.price ?? "0"));
   const [categories, setCategories] = useState<string[]>(course?.categories ?? []);
   const [catOpen, setCatOpen] = useState(false);
   const catRef = useRef<HTMLDivElement>(null);
-  const toggleCategory = (cat: string) =>
-    setCategories((prev) => prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]);
   const [isPublished, setIsPublished] = useState(course?.is_published ?? false);
+  const [progressionMode, setProgressionMode] = useState<ProgressionMode>(
+    course?.progression_mode ?? "self_paced"
+  );
   const [thumbnailUrl, setThumbnailUrl] = useState(course?.thumbnail_url ?? "");
-  const [lessons, setLessons] = useState<(Lesson & { _uploading?: boolean; _uploadPct?: number })[]>(initialLessons);
+  const [lessons, setLessons] = useState<(Lesson & { _uploading?: boolean; _uploadPct?: number })[]>(
+    initialLessons
+  );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [courseId, setCourseId] = useState(course?.id ?? "");
   const [saveWarning, setSaveWarning] = useState("");
 
+  const toggleCategory = (cat: string) =>
+    setCategories((prev) => (prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]));
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // Close category dropdown on outside click
   useEffect(() => {
     if (!catOpen) return;
     const handler = (e: MouseEvent) => {
-      if (catRef.current && !catRef.current.contains(e.target as Node)) {
-        setCatOpen(false);
-      }
+      if (catRef.current && !catRef.current.contains(e.target as Node)) setCatOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -191,21 +268,21 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
   const handleSaveCourse = async () => {
     setSaving(true);
     const slug = generateSlug(title);
+    const coursePayload = {
+      title,
+      slug,
+      description,
+      price: parseFloat(price) || 0,
+      categories,
+      is_published: isPublished,
+      thumbnail_url: thumbnailUrl || null,
+      progression_mode: progressionMode,
+    };
 
     if (!courseId) {
-      // Create
       const { data, error } = await supabase
         .from("courses")
-        .insert({
-          instructor_id: userId,
-          title,
-          slug,
-          description,
-          price: parseFloat(price) || 0,
-          categories,
-          is_published: isPublished,
-          thumbnail_url: thumbnailUrl || null,
-        })
+        .insert({ instructor_id: userId, ...coursePayload })
         .select()
         .single();
       if (!error && data) {
@@ -213,27 +290,22 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
         router.replace(`/instructor/courses/${data.id}`);
       }
     } else {
-      // Update
-      await supabase
-        .from("courses")
-        .update({
-          title,
-          description,
-          price: parseFloat(price) || 0,
-          categories,
-          is_published: isPublished,
-          thumbnail_url: thumbnailUrl || null,
-        })
-        .eq("id", courseId);
+      await supabase.from("courses").update(coursePayload).eq("id", courseId);
     }
 
-    // Save lesson order/titles
     for (let i = 0; i < lessons.length; i++) {
       const l = lessons[i];
       if (l.id.startsWith("temp-")) continue;
       await supabase
         .from("lessons")
-        .update({ title: l.title, position: i, is_free_preview: l.is_free_preview })
+        .update({
+          title: l.title,
+          position: i,
+          is_free_preview: l.is_free_preview,
+          lesson_type: l.lesson_type ?? "video",
+          content: l.content ?? null,
+          external_url: l.external_url ?? null,
+        })
         .eq("id", l.id);
     }
 
@@ -244,10 +316,7 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
   };
 
   const handleThumbnailUpload = async (file: File) => {
-    if (!courseId) {
-      setSaveWarning("Save the course first before uploading a thumbnail.");
-      return;
-    }
+    if (!courseId) { setSaveWarning("Save the course first before uploading a thumbnail."); return; }
     setSaveWarning("");
     setThumbnailUploading(true);
     const path = `${courseId}/${Date.now()}-${file.name}`;
@@ -261,20 +330,21 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
   };
 
   const handleAddLesson = async () => {
-    if (!courseId) {
-      setSaveWarning("Save the course first before adding lessons.");
-      return;
-    }
+    if (!courseId) { setSaveWarning("Save the course first before adding lessons."); return; }
     setSaveWarning("");
-    const position = lessons.length;
     const { data, error } = await supabase
       .from("lessons")
-      .insert({ course_id: courseId, title: "New lesson", position })
+      .insert({
+        course_id: courseId,
+        title: "New lesson",
+        position: lessons.length,
+        lesson_type: "video",
+        content: null,
+        external_url: null,
+      })
       .select()
       .single();
-    if (!error && data) {
-      setLessons((prev) => [...prev, data]);
-    }
+    if (!error && data) setLessons((prev) => [...prev, data]);
   };
 
   const handleUpdateLesson = useCallback((id: string, fields: Partial<Lesson>) => {
@@ -288,12 +358,8 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
 
   const handleVideoUpload = async (lessonId: string, file: File) => {
     setLessons((prev) => prev.map((l) => l.id === lessonId ? { ...l, _uploading: true, _uploadPct: 0 } : l));
-
-    // 1. Get signed Mux upload URL
     const res = await fetch("/api/mux/upload-url", { method: "POST" });
     const { uploadId, url } = await res.json();
-
-    // 2. XHR upload with progress — handles 500MB+ files reliably
     await new Promise<void>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.upload.addEventListener("progress", (e) => {
@@ -307,18 +373,13 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
       xhr.open("PUT", url);
       xhr.send(file);
     });
-
-    // 3. Poll until asset ready (max 40 attempts = ~2 min for large files)
     let attempts = 0;
     const poll = async () => {
       attempts++;
       const statusRes = await fetch(`/api/mux/asset-status/${uploadId}`);
       const { status, assetId, playbackId } = await statusRes.json();
       if (status === "ready" && playbackId) {
-        await supabase
-          .from("lessons")
-          .update({ mux_asset_id: assetId, mux_playback_id: playbackId })
-          .eq("id", lessonId);
+        await supabase.from("lessons").update({ mux_asset_id: assetId, mux_playback_id: playbackId }).eq("id", lessonId);
         setLessons((prev) =>
           prev.map((l) =>
             l.id === lessonId
@@ -329,9 +390,7 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
       } else if (attempts < 40) {
         setTimeout(poll, 3000);
       } else {
-        setLessons((prev) =>
-          prev.map((l) => l.id === lessonId ? { ...l, _uploading: false, _uploadPct: undefined } : l)
-        );
+        setLessons((prev) => prev.map((l) => l.id === lessonId ? { ...l, _uploading: false, _uploadPct: undefined } : l));
       }
     };
     setTimeout(poll, 3000);
@@ -356,21 +415,22 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
           <button onClick={() => setSaveWarning("")} className="ml-4 text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-200">✕</button>
         </div>
       )}
+
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">{courseId ? "Edit course" : "New course"}</h1>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <Switch
-              id="publish"
-              checked={isPublished}
-              onCheckedChange={setIsPublished}
-            />
+            <Switch id="publish" checked={isPublished} onCheckedChange={setIsPublished} />
             <Label htmlFor="publish" className="text-sm cursor-pointer flex items-center gap-1">
               {isPublished ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
               {isPublished ? "Published" : "Draft"}
             </Label>
           </div>
-          <Button onClick={handleSaveCourse} disabled={saving || !title} className={saved ? "bg-green-600 hover:bg-green-600 text-white" : ""}>
+          <Button
+            onClick={handleSaveCourse}
+            disabled={saving || !title}
+            className={saved ? "bg-green-600 hover:bg-green-600 text-white" : ""}
+          >
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {saving ? "Saving…" : saved ? "Saved!" : "Save"}
           </Button>
@@ -378,8 +438,9 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Course details */}
+        {/* Left: course details + curriculum/students */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Course details */}
           <Card className="overflow-visible">
             <CardHeader><CardTitle className="text-base">Course details</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -395,8 +456,11 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
                 <div className="space-y-2">
                   <Label>Categories</Label>
                   <div className="relative" ref={catRef}>
-                    <button type="button" onClick={() => setCatOpen(!catOpen)}
-                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <button
+                      type="button"
+                      onClick={() => setCatOpen(!catOpen)}
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
                       <span className="truncate text-left">
                         {categories.length === 0 ? "Select categories" : categories.join(", ")}
                       </span>
@@ -421,45 +485,113 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
                   <Input type="number" min="0" step="0.01" placeholder="0" value={price} onChange={(e) => setPrice(e.target.value)} />
                 </div>
               </div>
+
+              {/* Progression mode */}
+              <div className="space-y-2 pt-1">
+                <Label>Student progression</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["self_paced", "instructor_gated"] as ProgressionMode[]).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setProgressionMode(mode)}
+                      className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors ${
+                        progressionMode === mode
+                          ? "border-brand/60 bg-brand/5 text-foreground"
+                          : "border-border text-muted-foreground hover:border-foreground/30"
+                      }`}
+                    >
+                      <span className="text-sm font-medium">
+                        {mode === "self_paced" ? "Self-paced" : "Instructor-gated"}
+                      </span>
+                      <span className="text-xs leading-snug">
+                        {mode === "self_paced"
+                          ? "Students unlock lessons by completing prior ones"
+                          : "You manually unlock each lesson per student"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Curriculum */}
+          {/* Curriculum / Students tabs */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Curriculum</CardTitle>
-              <Button size="sm" variant="outline" onClick={handleAddLesson}>
-                <PlusCircle className="mr-2 h-3.5 w-3.5" />
-                Add lesson
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {lessons.length > 0 ? (
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <SortableContext items={lessons.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-                    <div className="space-y-2">
-                      {lessons.map((lesson) => (
-                        <SortableLesson
-                          key={lesson.id}
-                          lesson={lesson}
-                          onUpdate={handleUpdateLesson}
-                          onDelete={handleDeleteLesson}
-                          onUpload={handleVideoUpload}
-                        />
-                      ))}
+            <CardHeader className="pb-0">
+              <div className="flex items-center justify-between">
+                <div className="flex gap-1 border-b border-border w-full pb-0">
+                  <button
+                    onClick={() => setActiveTab("curriculum")}
+                    className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                      activeTab === "curriculum"
+                        ? "border-brand text-foreground"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <BookOpen className="h-3.5 w-3.5" />
+                    Curriculum
+                  </button>
+                  {courseId && (
+                    <button
+                      onClick={() => setActiveTab("students")}
+                      className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                        activeTab === "students"
+                          ? "border-brand text-foreground"
+                          : "border-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Users className="h-3.5 w-3.5" />
+                      Students
+                    </button>
+                  )}
+                  {activeTab === "curriculum" && (
+                    <div className="flex-1 flex justify-end items-center pr-1">
+                      <Button size="sm" variant="outline" onClick={handleAddLesson} className="h-7 text-xs">
+                        <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
+                        Add lesson
+                      </Button>
                     </div>
-                  </SortableContext>
-                </DndContext>
-              ) : (
-                <div className="flex flex-col items-center py-8 text-center text-muted-foreground">
-                  <p className="text-sm">No lessons yet. Add your first lesson to get started.</p>
+                  )}
                 </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="pt-4">
+              {activeTab === "curriculum" ? (
+                lessons.length > 0 ? (
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={lessons.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+                      <div className="space-y-2">
+                        {lessons.map((lesson) => (
+                          <SortableLesson
+                            key={lesson.id}
+                            lesson={lesson}
+                            onUpdate={handleUpdateLesson}
+                            onDelete={handleDeleteLesson}
+                            onUpload={handleVideoUpload}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                ) : (
+                  <div className="flex flex-col items-center py-8 text-center text-muted-foreground">
+                    <p className="text-sm">No lessons yet. Add your first lesson to get started.</p>
+                  </div>
+                )
+              ) : (
+                <StudentsTab
+                  courseId={courseId}
+                  lessons={lessons}
+                  progressionMode={progressionMode}
+                />
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Thumbnail */}
+        {/* Right: thumbnail */}
         <div className="space-y-6">
           <Card>
             <CardHeader><CardTitle className="text-base">Thumbnail</CardTitle></CardHeader>
@@ -474,11 +606,7 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
                 </div>
               )}
               <label className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground hover:border-foreground/30 hover:text-foreground transition-colors">
-                {thumbnailUploading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Upload className="h-4 w-4" />
-                )}
+                {thumbnailUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                 {thumbnailUploading ? "Uploading…" : "Upload image"}
                 <input
                   type="file"
@@ -490,6 +618,27 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
                   }}
                 />
               </label>
+            </CardContent>
+          </Card>
+
+          {/* Lesson type legend */}
+          <Card>
+            <CardHeader><CardTitle className="text-base">Lesson types</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {LESSON_TYPES.map((t) => (
+                <div key={t.value} className="flex items-start gap-2 text-xs">
+                  <span className="text-muted-foreground mt-0.5">{t.icon}</span>
+                  <div>
+                    <span className="font-medium">{t.label}</span>
+                    <span className="text-muted-foreground ml-1.5">
+                      {t.value === "video"  && "— Mux-hosted video only"}
+                      {t.value === "text"   && "— Markdown article"}
+                      {t.value === "link"   && "— External URL + description"}
+                      {t.value === "mixed"  && "— Video + written content"}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </div>

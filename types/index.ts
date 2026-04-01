@@ -1,4 +1,6 @@
 export type UserRole = "student" | "instructor" | "admin";
+export type LessonType = "video" | "text" | "link" | "mixed";
+export type ProgressionMode = "self_paced" | "instructor_gated";
 
 export interface Profile {
   id: string;
@@ -19,6 +21,7 @@ export interface Course {
   price: number;
   categories: string[];
   is_published: boolean;
+  progression_mode: ProgressionMode;
   created_at: string;
   profiles?: Profile;
   lessons?: Lesson[];
@@ -31,12 +34,24 @@ export interface Lesson {
   course_id: string;
   title: string;
   description: string | null;
+  lesson_type: LessonType;
+  content: string | null;
+  external_url: string | null;
   mux_asset_id: string | null;
   mux_playback_id: string | null;
   duration_seconds: number | null;
   position: number;
   is_free_preview: boolean;
   created_at: string;
+}
+
+export interface LessonUnlock {
+  id: string;
+  student_id: string;
+  course_id: string;
+  lesson_id: string;
+  unlocked_at: string;
+  unlocked_by: string | null;
 }
 
 export interface Enrollment {
