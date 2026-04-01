@@ -3,6 +3,8 @@ import { Navbar } from "@/components/shared/navbar";
 import { CourseCard } from "@/components/shared/course-card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
 import { CATEGORIES } from "@/types";
 import type { Course } from "@/types";
 
@@ -25,7 +27,7 @@ export default async function CoursesPage({
 
   let query = supabase
     .from("courses")
-    .select(`*, profiles(*), lessons(count), enrollments(count)`)
+    .select(`*, profiles(*), lessons(count), enrollments(count), reviews(rating)`)
     .eq("is_published", true)
     .order("created_at", { ascending: false });
 
@@ -47,13 +49,16 @@ export default async function CoursesPage({
 
         {/* Filters */}
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center">
-          <form className="flex-1 max-w-sm">
+          <form className="flex gap-2 flex-1 max-w-sm">
             <Input
               name="q"
               placeholder="Search courses…"
               defaultValue={q}
               className="h-9"
             />
+            <Button type="submit" size="sm" variant="secondary" className="shrink-0">
+              <Search className="h-4 w-4" />
+            </Button>
           </form>
           <div className="flex flex-wrap gap-2">
             <a href="/courses">

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from "@/components/ui/separator";
 import { GraduationCap, Loader2 } from "lucide-react";
 
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  auth_callback_failed: "Sign-in failed. Please try again.",
+  access_denied: "Access was denied. Please try again.",
+};
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,6 +24,9 @@ export default function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next") ?? "/dashboard";
+  const urlError = searchParams.get("error");
   const supabase = createClient();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -39,7 +47,7 @@ export default function LoginPage() {
           role: "student",
         }, { onConflict: "id", ignoreDuplicates: true });
       }
-      router.push("/dashboard");
+      router.push(next);
       router.refresh();
     }
   };
@@ -48,7 +56,9 @@ export default function LoginPage() {
     setGoogleLoading(true);
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+      },
     });
   };
 
@@ -97,9 +107,9 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
-              {error && (
+              {(urlError || error) && (
                 <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">
-                  {error}
+                  {error ?? AUTH_ERROR_MESSAGES[urlError!] ?? "Something went wrong. Please try again."}
                 </p>
               )}
               <div className="space-y-2">

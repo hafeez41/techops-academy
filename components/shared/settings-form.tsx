@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Loader2, CheckCircle } from "lucide-react";
 import type { Profile } from "@/types";
 
-export function SettingsForm({ profile }: { profile: Profile }) {
+export function SettingsForm({ profile, hasPasswordAuth }: { profile: Profile; hasPasswordAuth: boolean }) {
   const supabase = createClient();
 
   const [fullName, setFullName] = useState(profile.full_name ?? "");
@@ -143,7 +143,19 @@ export function SettingsForm({ profile }: { profile: Profile }) {
         </CardContent>
       </Card>
 
-      {/* Password */}
+      {/* Password — only shown for email/password accounts, not OAuth-only */}
+      {!hasPasswordAuth ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Password</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              You signed in with Google. Password-based login is not available for your account.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Change password</CardTitle>
@@ -206,6 +218,7 @@ export function SettingsForm({ profile }: { profile: Profile }) {
           </form>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

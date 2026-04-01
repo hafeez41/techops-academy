@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { BookOpen, Users, PlayCircle } from "lucide-react";
+import { BookOpen, Star, PlayCircle } from "lucide-react";
 import type { Course } from "@/types";
 
 interface CourseCardProps {
@@ -22,6 +22,11 @@ export function CourseCard({ course, isAdmin = false }: CourseCardProps) {
 
   const lessonCount = course.lessons?.length ?? 0;
   const studentCount = course.enrollments?.[0]?.count ?? 0;
+
+  const avgRating =
+    course.reviews && course.reviews.length > 0
+      ? course.reviews.reduce((s, r) => s + r.rating, 0) / course.reviews.length
+      : null;
 
   return (
     <Link href={`/courses/${course.slug}`}>
@@ -55,39 +60,53 @@ export function CourseCard({ course, isAdmin = false }: CourseCardProps) {
           )}
         </div>
 
-        <CardContent className="flex flex-col gap-3 p-4 flex-1">
+        <CardContent className="flex flex-col gap-2.5 p-4 flex-1">
           <h3 className="font-semibold leading-snug line-clamp-2 group-hover:text-brand transition-colors duration-200">
             {course.title}
           </h3>
 
-          {course.description && (
-            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-              {course.description}
-            </p>
-          )}
+          {/* Instructor */}
+          <div className="flex items-center gap-1.5">
+            <Avatar className="h-4 w-4">
+              <AvatarImage src={course.profiles?.avatar_url ?? ""} />
+              <AvatarFallback className="text-[8px] bg-brand text-brand-foreground font-semibold">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-xs text-muted-foreground truncate">{instructorName}</span>
+          </div>
 
-          {isAdmin && (
-            <div className="flex items-center gap-2 mt-auto pt-1">
-              <Avatar className="h-5 w-5">
-                <AvatarImage src={course.profiles?.avatar_url ?? ""} />
-                <AvatarFallback className="text-[10px] bg-brand text-brand-foreground font-semibold">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-xs text-muted-foreground truncate">{instructorName}</span>
+          {/* Rating */}
+          {avgRating ? (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-yellow-500">{avgRating.toFixed(1)}</span>
+              <div className="flex">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`h-3 w-3 ${
+                      i < Math.round(avgRating)
+                        ? "fill-yellow-400 text-yellow-400"
+                        : "text-muted-foreground/40"
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className="text-xs text-muted-foreground">
+                ({course.reviews!.length})
+              </span>
             </div>
+          ) : (
+            <div className="text-xs text-muted-foreground">No ratings yet</div>
           )}
 
-          <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border/50 pt-3 mt-1">
+          <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border/50 pt-3 mt-auto">
             <div className="flex items-center gap-1">
               <BookOpen className="h-3.5 w-3.5" />
               {lessonCount} lessons
             </div>
             {isAdmin && (
-              <div className="flex items-center gap-1">
-                <Users className="h-3.5 w-3.5" />
-                {studentCount.toLocaleString()} students
-              </div>
+              <span className="text-muted-foreground">{studentCount.toLocaleString()} students</span>
             )}
             <span className="font-bold text-foreground text-sm">
               {course.price === 0 ? "Free" : `$${course.price.toLocaleString()}`}

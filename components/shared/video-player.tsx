@@ -20,6 +20,7 @@ interface VideoPlayerProps {
   lessonId: string;
   courseId: string;
   isCompleted: boolean;
+  isEnrolled: boolean;
   nextLessonId: string | null;
   nextCourseId: string | null;
 }
@@ -29,6 +30,7 @@ export function VideoPlayer({
   lessonId,
   courseId,
   isCompleted,
+  isEnrolled,
   nextLessonId,
   nextCourseId,
 }: VideoPlayerProps) {
@@ -74,28 +76,30 @@ export function VideoPlayer({
         />
       </div>
 
-      <div className="flex items-center gap-3">
-        <Button
-          variant={completed ? "secondary" : "default"}
-          size="sm"
-          onClick={handleMarkComplete}
-          disabled={marking}
-        >
-          {marking ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <CheckCircle className={`mr-2 h-4 w-4 ${completed ? "text-green-500" : ""}`} />
-          )}
-          {completed ? "Mark as incomplete" : "Mark as complete"}
-        </Button>
-
-        {nextLessonId && (
-          <Button variant="outline" size="sm" onClick={handleNext}>
-            Next lesson
-            <ChevronRight className="ml-1 h-4 w-4" />
+      {isEnrolled && (
+        <div className="flex items-center gap-3">
+          <Button
+            variant={completed ? "secondary" : "default"}
+            size="sm"
+            onClick={handleMarkComplete}
+            disabled={marking}
+          >
+            {marking ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCircle className={`mr-2 h-4 w-4 ${completed ? "text-green-500" : ""}`} />
+            )}
+            {completed ? "Mark as incomplete" : "Mark as complete"}
           </Button>
-        )}
-      </div>
+
+          {nextLessonId && (
+            <Button variant="outline" size="sm" onClick={handleNext}>
+              Next lesson
+              <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

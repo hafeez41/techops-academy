@@ -18,6 +18,9 @@ export default async function SettingsPage() {
 
   if (!profile) redirect("/login");
 
+  // Detect whether the user has a password-based identity (vs OAuth-only)
+  const hasPasswordAuth = user.identities?.some((i) => i.provider === "email") ?? true;
+
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
@@ -28,7 +31,7 @@ export default async function SettingsPage() {
             Manage your profile and account security
           </p>
         </div>
-        <SettingsForm profile={profile} />
+        <SettingsForm profile={profile} hasPasswordAuth={hasPasswordAuth} />
       </main>
     </div>
   );
