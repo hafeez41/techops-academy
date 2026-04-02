@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { AdminCourseBuilder } from "@/components/admin/admin-course-builder";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,20 +47,7 @@ export function AdminDashboard({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ type: "course" | "user"; id: string; name: string } | null>(null);
 
-  // Course builder state
-  const [builderCourse, setBuilderCourse] = useState<Course | null | "new">(null); // null = list, "new" = new, Course = editing
-
   const refresh = () => router.refresh();
-
-  const handleBuilderBack = async () => {
-    setBuilderCourse(null);
-    const { data } = await supabase
-      .from("courses")
-      .select("id, title, slug, is_published, price, categories, created_at, instructor_id, description, thumbnail_url, profiles(full_name)")
-      .order("created_at", { ascending: false });
-    if (data) setCourses(data as unknown as Course[]);
-    router.refresh();
-  };
 
   // --- Course actions ---
   const togglePublish = async (course: Course) => {
@@ -134,19 +121,6 @@ export function AdminDashboard({
     green: { bg: "bg-green-500/10", icon: "text-green-500" },
     brand: { bg: "bg-brand/10",     icon: "text-brand"     },
   } as const;
-
-  // If we're in the course builder view
-  if (builderCourse !== null) {
-    return (
-      <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <AdminCourseBuilder
-          course={builderCourse === "new" ? null : builderCourse as Course}
-          adminId={adminId}
-          onBack={handleBuilderBack}
-        />
-      </main>
-    );
-  }
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -315,8 +289,10 @@ export function AdminDashboard({
       {tab === "courses" && (
         <div className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => setBuilderCourse("new")} className="bg-brand text-brand-foreground hover:bg-brand/90 gap-2">
-              <PlusCircle className="h-4 w-4" /> New Course
+            <Button asChild className="bg-brand text-brand-foreground hover:bg-brand/90 gap-2">
+              <Link href="/instructor/courses/new">
+                <PlusCircle className="h-4 w-4" /> New Course
+              </Link>
             </Button>
           </div>
 
@@ -348,9 +324,10 @@ export function AdminDashboard({
                         </td>
                         <td className="px-6 py-3">
                           <div className="flex items-center gap-2">
-                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5"
-                              onClick={() => setBuilderCourse(c)}>
-                              <Pencil className="h-3 w-3" /> Edit
+                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" asChild>
+                              <Link href={`/instructor/courses/${c.id}`}>
+                                <Pencil className="h-3 w-3" /> Edit
+                              </Link>
                             </Button>
                             <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5"
                               disabled={updatingId === c.id}
@@ -367,7 +344,7 @@ export function AdminDashboard({
                     ))}
                     {courses.length === 0 && (
                       <tr><td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
-                        No courses yet — <button onClick={() => setBuilderCourse("new")} className="text-brand hover:underline">create your first</button>
+                        No courses yet — <Link href="/instructor/courses/new" className="text-brand hover:underline">create your first</Link>
                       </td></tr>
                     )}
                   </tbody>

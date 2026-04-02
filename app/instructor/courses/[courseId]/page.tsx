@@ -21,7 +21,7 @@ export default async function CourseBuilderPage({
     .select("role")
     .eq("id", user.id)
     .single();
-  if (!profile || profile.role !== "instructor") redirect("/dashboard");
+  if (!profile || (profile.role !== "instructor" && profile.role !== "admin")) redirect("/dashboard");
 
   // "new" means creating a course
   if (courseId === "new") {
@@ -33,12 +33,10 @@ export default async function CourseBuilderPage({
     );
   }
 
-  const { data: course } = await supabase
-    .from("courses")
-    .select("*")
-    .eq("id", courseId)
-    .eq("instructor_id", user.id)
-    .single();
+  // Admins can edit any course; instructors can only edit their own
+  let courseQuery = supabase.from("courses").select("*").eq("id", courseId);
+  if (profile.role !== "admin") courseQuery = courseQuery.eq("instructor_id", user.id);
+  const { data: course } = await courseQuery.single();
   if (!course) notFound();
 
   const [{ data: lessons }, { data: sections }] = await Promise.all([
