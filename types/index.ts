@@ -1,5 +1,5 @@
 export type UserRole = "student" | "instructor" | "admin";
-export type LessonType = "video" | "text" | "link" | "mixed";
+export type LessonType = "video" | "text" | "link" | "mixed" | "quiz";
 export type ProgressionMode = "self_paced" | "instructor_gated";
 
 export interface Profile {
@@ -97,6 +97,52 @@ export interface Review {
   body: string | null;
   created_at: string;
   profiles?: Profile;
+}
+
+export interface LessonComment {
+  id: string;
+  lesson_id: string;
+  course_id: string;
+  student_id: string;
+  parent_id: string | null;
+  body: string;
+  created_at: string;
+  profiles?: { full_name: string | null; avatar_url: string | null };
+  replies?: LessonComment[];
+}
+
+export interface QuizQuestion {
+  id: string;
+  lesson_id: string;
+  course_id: string;
+  question: string;
+  position: number;
+  pass_threshold: number;
+  options: QuizOption[];
+}
+
+export interface QuizOption {
+  id: string;
+  question_id: string;
+  text: string;
+  is_correct: boolean;
+  position: number;
+}
+
+export interface QuizAttempt {
+  student_id: string;
+  lesson_id: string;
+  course_id: string;
+  score: number;
+  passed: boolean;
+  answers: Record<string, string>;
+  attempted_at: string;
+}
+
+export interface CoursePrerequisite {
+  course_id: string;
+  prerequisite_id: string;
+  courses?: Pick<Course, "id" | "title" | "slug">;
 }
 
 export const CATEGORIES = [

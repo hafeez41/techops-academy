@@ -52,6 +52,9 @@ import {
   FolderPlus,
   ChevronDown,
   ChevronRight,
+  HelpCircle,
+  Plus,
+  X,
 } from "lucide-react";
 import type { Course, Lesson, LessonType, ProgressionMode, CourseSection } from "@/types";
 import { CATEGORIES as CAT_LIST } from "@/types";
@@ -68,7 +71,150 @@ const LESSON_TYPES: { value: LessonType; label: string; icon: React.ReactNode }[
   { value: "text",   label: "Text",    icon: <FileText className="h-3.5 w-3.5" /> },
   { value: "link",   label: "Link",    icon: <Link2 className="h-3.5 w-3.5" /> },
   { value: "mixed",  label: "Mixed",   icon: <LayoutTemplate className="h-3.5 w-3.5" /> },
+  { value: "quiz",   label: "Quiz",    icon: <HelpCircle className="h-3.5 w-3.5" /> },
 ];
+
+// ── Inline quiz editor shown inside a quiz-type lesson card ───────────────────
+interface QuizQ { id?: string; question: string; pass_threshold: number; options: { id?: string; text: string; is_correct: boolean }[] }
+
+function QuizEditor({ lessonId, courseId }: { lessonId: string; courseId: string }) {
+  const [questions, setQuestions] = useState<QuizQ[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/quiz?lessonId=${lessonId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.questions?.length) setQuestions(d.questions);
+        else setQuestions([{ question: "", pass_threshold: 70, options: [{ text: "", is_correct: true }, { text: "", is_correct: false }] }]);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, [lessonId]);
+
+  const addQuestion = () =>
+    setQuestions((p) => [...p, { question: "", pass_threshold: 70, options: [{ text: "", is_correct: true }, { text: "", is_correct: false }] }]);
+
+  const removeQuestion = (qi: number) =>
+    setQuestions((p) => p.filter((_, i) => i !== qi));
+
+  const updateQuestion = (qi: number, field: keyof QuizQ, value: unknown) =>
+    setQuestions((p) => p.map((q, i) => i === qi ? { ...q, [field]: value } : q));
+
+  const addOption = (qi: number) =>
+    setQuestions((p) => p.map((q, i) => i === qi ? { ...q, options: [...q.options, { text: "", is_correct: false }] } : q));
+
+  const removeOption = (qi: number, oi: number) =>
+    setQuestions((p) => p.map((q, i) => i === qi ? { ...q, options: q.options.filter((_, j) => j !== oi) } : q));
+
+  const updateOption = (qi: number, oi: number, field: "text" | "is_correct", value: string | boolean) =>
+    setQuestions((p) => p.map((q, i) => {
+      if (i !== qi) return q;
+      const opts = q.options.map((o, j) => {
+        if (field === "is_correct" && value === true) return { ...o, is_correct: j === oi };
+        return j === oi ? { ...o, [field]: value } : o;
+      });
+      return { ...q, options: opts };
+    }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    await fetch("/api/quiz", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lessonId, courseId, questions }),
+    });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  if (!loaded) return <div className="flex items-center gap-2 text-xs text-muted-foreground py-2"><Loader2 className="h-3 w-3 animate-spin" /> Loading questions…</div>;
+
+  return (
+    <div className="space-y-3 mt-1">
+      {questions.map((q, qi) => (
+        <div key={qi} className="rounded-md border border-border/60 bg-background p-3 space-y-2">
+          <div className="flex items-start gap-2">
+            <Input
+              placeholder={`Question ${qi + 1}`}
+              value={q.question}
+              onChange={(e) => updateQuestion(qi, "question", e.target.value)}
+              className="h-8 text-sm flex-1"
+            />
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">Pass %</span>
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                value={q.pass_threshold}
+                onChange={(e) => updateQuestion(qi, "pass_threshold", Number(e.target.value))}
+                className="h-8 w-14 text-xs"
+              />
+              <button onClick={() => removeQuestion(qi)} className="text-muted-foreground hover:text-destructive transition-colors ml-1">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-1.5 pl-2">
+            {q.options.map((opt, oi) => (
+              <div key={oi} className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name={`correct-${qi}`}
+                  checked={opt.is_correct}
+                  onChange={() => updateOption(qi, oi, "is_correct", true)}
+                  className="accent-brand shrink-0"
+                  title="Mark as correct answer"
+                />
+                <Input
+                  placeholder={`Option ${oi + 1}`}
+                  value={opt.text}
+                  onChange={(e) => updateOption(qi, oi, "text", e.target.value)}
+                  className="h-7 text-xs flex-1"
+                />
+                {q.options.length > 2 && (
+                  <button onClick={() => removeOption(qi, oi)} className="text-muted-foreground hover:text-destructive transition-colors">
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              onClick={() => addOption(qi)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
+            >
+              <Plus className="h-3 w-3" /> Add option
+            </button>
+          </div>
+        </div>
+      ))}
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={addQuestion}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" /> Add question
+        </button>
+        <Button
+          size="sm"
+          variant="outline"
+          className={`h-7 text-xs ml-auto ${saved ? "border-green-500 text-green-600" : ""}`}
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+          {saved ? "Saved!" : "Save quiz"}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function SortableLesson({
   lesson,
@@ -96,6 +242,7 @@ function SortableLesson({
   const showVideo = type === "video" || type === "mixed";
   const showText  = type === "text"  || type === "mixed";
   const showLink  = type === "link";
+  const showQuiz  = type === "quiz";
 
   return (
     <div ref={setNodeRef} style={style} className="rounded-lg border border-border bg-card p-4">
@@ -216,6 +363,15 @@ function SortableLesson({
               rows={6}
               className="text-sm font-mono resize-y"
             />
+          )}
+
+          {/* Quiz editor */}
+          {showQuiz && (
+            lesson.id.startsWith("temp-") ? (
+              <p className="text-xs text-muted-foreground">Save the course to enable quiz editing.</p>
+            ) : (
+              <QuizEditor lessonId={lesson.id} courseId={lesson.course_id} />
+            )
           )}
 
           {/* External URL (link) */}
@@ -404,6 +560,41 @@ export function CourseBuilder({
   const [saveWarning, setSaveWarning] = useState("");
   const [addingSection, setAddingSection] = useState(false);
 
+  // Prerequisites
+  const [prereqIds, setPrereqIds] = useState<string[]>([]);
+  const [prereqCourses, setPrereqCourses] = useState<{ id: string; title: string }[]>([]);
+  const [allCourses, setAllCourses] = useState<{ id: string; title: string }[]>([]);
+  const [prereqLoaded, setPrereqLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!courseId) return;
+    // Load existing prerequisites + all courses for dropdown
+    Promise.all([
+      supabase.from("course_prerequisites").select("prerequisite_id").eq("course_id", courseId),
+      supabase.from("courses").select("id, title").eq("is_published", true).neq("id", courseId).order("title"),
+    ]).then(([{ data: prereqs }, { data: courses }]) => {
+      const ids = (prereqs ?? []).map((p) => p.prerequisite_id);
+      setPrereqIds(ids);
+      const all = courses ?? [];
+      setAllCourses(all);
+      setPrereqCourses(all.filter((c) => ids.includes(c.id)));
+      setPrereqLoaded(true);
+    });
+  }, [courseId, supabase]);
+
+  const handleAddPrereq = async (prereqId: string) => {
+    if (prereqIds.includes(prereqId)) return;
+    await supabase.from("course_prerequisites").upsert({ course_id: courseId, prerequisite_id: prereqId }, { onConflict: "course_id,prerequisite_id" });
+    setPrereqIds((p) => [...p, prereqId]);
+    setPrereqCourses((p) => [...p, allCourses.find((c) => c.id === prereqId)!].filter(Boolean));
+  };
+
+  const handleRemovePrereq = async (prereqId: string) => {
+    await supabase.from("course_prerequisites").delete().eq("course_id", courseId).eq("prerequisite_id", prereqId);
+    setPrereqIds((p) => p.filter((id) => id !== prereqId));
+    setPrereqCourses((p) => p.filter((c) => c.id !== prereqId));
+  };
+
   const toggleCategory = (cat: string) =>
     setCategories((prev) => (prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]));
 
@@ -424,9 +615,22 @@ export function CourseBuilder({
   const generateSlug = (t: string) =>
     t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
+  const generateUniqueSlug = async (base: string): Promise<string> => {
+    let slug = base;
+    let attempt = 1;
+    while (true) {
+      let q = supabase.from("courses").select("id").eq("slug", slug);
+      if (courseId) q = q.neq("id", courseId);
+      const { data } = await q.maybeSingle();
+      if (!data) return slug;
+      attempt++;
+      slug = `${base}-${attempt}`;
+    }
+  };
+
   const handleSaveCourse = async () => {
     setSaving(true);
-    const slug = generateSlug(title);
+    const slug = await generateUniqueSlug(generateSlug(title));
     const coursePayload = {
       title,
       slug,
@@ -872,6 +1076,58 @@ export function CourseBuilder({
             </CardContent>
           </Card>
 
+          {/* Prerequisites */}
+          {courseId && (
+            <Card>
+              <CardHeader><CardTitle className="text-base">Prerequisites</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Students must complete these courses before enrolling.
+                </p>
+
+                {!prereqLoaded ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Loading…
+                  </div>
+                ) : (
+                  <>
+                    {prereqCourses.length > 0 && (
+                      <div className="space-y-1.5">
+                        {prereqCourses.map((c) => (
+                          <div key={c.id} className="flex items-center justify-between gap-2 rounded-md border border-border px-2.5 py-1.5 text-xs">
+                            <span className="truncate">{c.title}</span>
+                            <button onClick={() => handleRemovePrereq(c.id)} className="shrink-0 text-muted-foreground hover:text-destructive transition-colors">
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {allCourses.filter((c) => !prereqIds.includes(c.id)).length > 0 && (
+                      <select
+                        className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        onChange={(e) => { if (e.target.value) { handleAddPrereq(e.target.value); e.target.value = ""; } }}
+                        defaultValue=""
+                      >
+                        <option value="" disabled>Add prerequisite…</option>
+                        {allCourses
+                          .filter((c) => !prereqIds.includes(c.id))
+                          .map((c) => (
+                            <option key={c.id} value={c.id}>{c.title}</option>
+                          ))}
+                      </select>
+                    )}
+
+                    {prereqCourses.length === 0 && allCourses.filter((c) => !prereqIds.includes(c.id)).length === 0 && (
+                      <p className="text-xs text-muted-foreground">No other published courses available.</p>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Lesson type legend */}
           <Card>
             <CardHeader><CardTitle className="text-base">Lesson types</CardTitle></CardHeader>
@@ -886,6 +1142,7 @@ export function CourseBuilder({
                       {t.value === "text"   && "— Markdown article"}
                       {t.value === "link"   && "— External URL + description"}
                       {t.value === "mixed"  && "— Video + written content"}
+                      {t.value === "quiz"   && "— Multiple-choice assessment"}
                     </span>
                   </div>
                 </div>

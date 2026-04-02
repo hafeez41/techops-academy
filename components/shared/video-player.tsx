@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,13 @@ interface VideoPlayerProps {
   controlsOnly?: boolean;
 }
 
+// Save position every N seconds while playing
+const SAVE_INTERVAL_S = 10;
+// Don't restore position if within this many seconds of the end
+const END_THRESHOLD_S = 10;
+// Don't restore if position is less than this (treat as start)
+const START_THRESHOLD_S = 3;
+
 export function VideoPlayer({
   playbackId,
   lessonId,
@@ -39,7 +46,36 @@ export function VideoPlayer({
 }: VideoPlayerProps) {
   const [marking, setMarking] = useState(false);
   const [completed, setCompleted] = useState(isCompleted);
+  const [resumePosition, setResumePosition] = useState<number | null>(null);
   const router = useRouter();
+  const lastSavedRef = useRef(0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const playerRef = useRef<any>(null);
+
+  // Fetch saved resume position on mount
+  useEffect(() => {
+    if (!isEnrolled || controlsOnly || !playbackId) return;
+    fetch(`/api/video-position?lessonId=${lessonId}`)
+      .then((r) => r.json())
+      .then(({ position }) => {
+        if (position && position > START_THRESHOLD_S) {
+          setResumePosition(position);
+        }
+      })
+      .catch(() => {});
+  }, [lessonId, isEnrolled, controlsOnly, playbackId]);
+
+  const savePosition = (seconds: number) => {
+    if (!isEnrolled) return;
+    const now = Date.now();
+    if (now - lastSavedRef.current < SAVE_INTERVAL_S * 1000) return;
+    lastSavedRef.current = now;
+    fetch("/api/video-position", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lessonId, position: seconds }),
+    }).catch(() => {});
+  };
 
   const handleMarkComplete = async () => {
     setMarking(true);
@@ -71,13 +107,50 @@ export function VideoPlayer({
   return (
     <div className="space-y-4">
       {!controlsOnly && (
-        <div className="rounded-lg overflow-hidden bg-black aspect-video">
+        <div className="rounded-lg overflow-hidden bg-black aspect-video relative">
           <MuxPlayer
+            ref={playerRef}
             playbackId={playbackId}
             streamType="on-demand"
             style={{ width: "100%", height: "100%" }}
+            startTime={resumePosition ?? undefined}
+            onTimeUpdate={(e) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const t = (e.target as any)?.currentTime;
+              if (typeof t === "number") savePosition(t);
+            }}
+            onDurationChange={(e) => {
+              // If resume position is near the end, reset it
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const duration = (e.target as any)?.duration;
+              if (
+                typeof duration === "number" &&
+                resumePosition !== null &&
+                duration - resumePosition < END_THRESHOLD_S
+              ) {
+                setResumePosition(null);
+              }
+            }}
             onEnded={() => { if (!completed) handleMarkComplete(); }}
           />
+
+          {/* Resume toast */}
+          {resumePosition !== null && resumePosition > START_THRESHOLD_S && (
+            <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10">
+              <div className="rounded-full bg-black/80 backdrop-blur-sm border border-white/10 px-4 py-2 text-xs text-white flex items-center gap-3 shadow-lg">
+                <span>Resumed from {Math.floor(resumePosition / 60)}:{String(Math.floor(resumePosition % 60)).padStart(2, "0")}</span>
+                <button
+                  onClick={() => {
+                    if (playerRef.current) playerRef.current.currentTime = 0;
+                    setResumePosition(null);
+                  }}
+                  className="text-white/60 hover:text-white transition-colors"
+                >
+                  Start over
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

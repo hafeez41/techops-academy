@@ -23,7 +23,7 @@ export default async function DashboardPage() {
   const [{ data: enrollments }, { data: progress }] = await Promise.all([
     supabase
       .from("enrollments")
-      .select("*, courses(id, title, thumbnail_url, lessons(id, position))")
+      .select("*, last_visited_lesson_id, courses(id, title, thumbnail_url, lessons(id, position))")
       .eq("student_id", user.id)
       .order("enrolled_at", { ascending: false }),
     supabase
@@ -46,12 +46,19 @@ export default async function DashboardPage() {
   }
 
   const courses: CourseProgress[] = (enrollments ?? []).map(
-    (enrollment: Enrollment & { courses: { id: string; title: string; thumbnail_url: string | null; lessons: Lesson[] } }) => {
+    (enrollment: Enrollment & { last_visited_lesson_id: string | null; courses: { id: string; title: string; thumbnail_url: string | null; lessons: Lesson[] } }) => {
       const course = enrollment.courses;
       const lessons: Lesson[] = [...(course?.lessons ?? [])].sort((a, b) => a.position - b.position);
       const completedCount = lessons.filter((l) => completedLessonIds.has(l.id)).length;
       const pct = lessons.length > 0 ? Math.round((completedCount / lessons.length) * 100) : 0;
-      const nextLesson = lessons.find((l) => !completedLessonIds.has(l.id)) ?? lessons[0];
+
+      // Resume last visited lesson, or fall back to first incomplete, or first lesson
+      const lastVisited = enrollment.last_visited_lesson_id
+        ? lessons.find((l) => l.id === enrollment.last_visited_lesson_id)
+        : null;
+      const nextLesson = lastVisited
+        ?? lessons.find((l) => !completedLessonIds.has(l.id))
+        ?? lessons[0];
 
       return {
         enrollmentId: enrollment.id,

@@ -183,6 +183,12 @@ export function StudentsTab({ courseId, lessons, progressionMode }: StudentsTabP
     }));
   };
 
+  const handleUnlockAllStudents = async () => {
+    for (const student of students) {
+      await handleUnlockAll(student.id);
+    }
+  };
+
   const initials = (name: string | null) =>
     (name ?? "?")
       .split(" ")
@@ -212,6 +218,24 @@ export function StudentsTab({ courseId, lessons, progressionMode }: StudentsTabP
       </form>
       {addError && (
         <p className="text-xs text-destructive">{addError}</p>
+      )}
+
+      {/* Bulk actions */}
+      {progressionMode === "instructor_gated" && students.length > 0 && (
+        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-2.5">
+          <span className="text-xs text-muted-foreground">
+            {students.length} {students.length === 1 ? "student" : "students"} enrolled
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            onClick={handleUnlockAllStudents}
+          >
+            <Unlock className="h-3 w-3" />
+            Unlock all lessons for all students
+          </Button>
+        </div>
       )}
 
       {/* Student list */}

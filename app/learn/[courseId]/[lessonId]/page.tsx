@@ -15,6 +15,8 @@ import { LessonTabs } from "@/components/shared/lesson-tabs";
 import { MobileSidebar } from "@/components/shared/mobile-sidebar";
 import { LessonContent } from "@/components/shared/lesson-content";
 import { LessonNotes } from "@/components/shared/lesson-notes";
+import { LessonComments } from "@/components/shared/lesson-comments";
+import { QuizPlayer } from "@/components/shared/quiz-player";
 import type { Lesson } from "@/types";
 
 interface LessonFile { id: string; name: string; url: string; size?: number | null }
@@ -25,15 +27,6 @@ function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-function lessonTypeIcon(type: string) {
-  switch (type) {
-    case "text":  return "📄";
-    case "link":  return "🔗";
-    case "mixed": return "▶️";
-    default:      return "▶️";
-  }
 }
 
 export default async function LearnPage({
@@ -64,7 +57,7 @@ export default async function LearnPage({
   let isAdmin = false;
   let isEnrolled = false;
   let completedIds = new Set<string>();
-  let unlockedIds = new Set<string>(); // for instructor_gated courses
+  let unlockedIds = new Set<string>();
 
   if (user) {
     const [{ data: profile }, { data: enrollment }, { data: progress }] = await Promise.all([
@@ -76,7 +69,6 @@ export default async function LearnPage({
     isEnrolled = isAdmin || !!enrollment;
     completedIds = new Set(progress?.map((p) => p.lesson_id) ?? []);
 
-    // For instructor-gated courses, fetch which lessons are unlocked for this student
     if (isEnrolled && !isAdmin && course.progression_mode === "instructor_gated") {
       const { data: unlocks } = await supabase
         .from("lesson_unlocks")
@@ -85,8 +77,17 @@ export default async function LearnPage({
         .eq("course_id", courseId);
       unlockedIds = new Set(unlocks?.map((u) => u.lesson_id) ?? []);
     } else if (isAdmin || course.progression_mode === "self_paced") {
-      // All lessons accessible
       unlockedIds = new Set(lessons.map((l) => l.id));
+    }
+
+    // Persist last-visited lesson for enrolled students (fire-and-forget)
+    if (isEnrolled && !isAdmin) {
+      supabase
+        .from("enrollments")
+        .update({ last_visited_lesson_id: lessonId })
+        .eq("student_id", user.id)
+        .eq("course_id", courseId)
+        .then(() => {});
     }
   }
 
@@ -96,7 +97,6 @@ export default async function LearnPage({
     if (!isEnrolled) redirect("/courses");
   }
 
-  // Instructor-gated check (enrolled but lesson not yet unlocked)
   const isGated = course.progression_mode === "instructor_gated" && !isAdmin;
   const isLockedByInstructor = isGated && isEnrolled && !unlockedIds.has(currentLesson.id);
 
@@ -105,6 +105,8 @@ export default async function LearnPage({
   const isCompleted = completedIds.has(currentLesson.id);
   const completedCount = completedIds.size;
   const progressPct = lessons.length > 0 ? Math.round((completedCount / lessons.length) * 100) : 0;
+
+  const isQuiz = currentLesson.lesson_type === "quiz";
 
   // Sidebar lesson list
   const lessonList = (
@@ -268,6 +270,9 @@ export default async function LearnPage({
                       {!isEnrolled && currentLesson.is_free_preview && (
                         <span className="ml-2 text-brand font-medium">· Free preview</span>
                       )}
+                      {isQuiz && (
+                        <span className="ml-2 text-muted-foreground">· Quiz</span>
+                      )}
                     </p>
                     <h1 className="text-xl font-bold leading-snug">{currentLesson.title}</h1>
                   </div>
@@ -297,24 +302,35 @@ export default async function LearnPage({
                   </div>
                 )}
 
+                {/* ── QUIZ ── */}
+                {isQuiz && (
+                  <QuizPlayer
+                    lessonId={currentLesson.id}
+                    courseId={courseId}
+                    isEnrolled={isEnrolled}
+                  />
+                )}
+
                 {/* ── TEXT / MIXED / LINK: markdown content ── */}
-                {(currentLesson.lesson_type === "text" ||
-                  currentLesson.lesson_type === "mixed" ||
-                  currentLesson.lesson_type === "link") &&
+                {!isQuiz &&
+                  (currentLesson.lesson_type === "text" ||
+                    currentLesson.lesson_type === "mixed" ||
+                    currentLesson.lesson_type === "link") &&
                   currentLesson.content && (
                     <LessonContent content={currentLesson.content} />
                   )}
 
                 {/* ── Standard tabs (description + files) ── */}
-                {(currentLesson.lesson_type === "video" || currentLesson.lesson_type === "mixed") && (
+                {!isQuiz && (currentLesson.lesson_type === "video" || currentLesson.lesson_type === "mixed") && (
                   <LessonTabs
                     description={currentLesson.description}
                     files={isEnrolled ? (currentLesson.lesson_files ?? []) : []}
                   />
                 )}
 
-                {/* ── Mark complete / next (non-video types, enrolled only) ── */}
+                {/* ── Mark complete / next (non-video, non-quiz types, enrolled only) ── */}
                 {isEnrolled &&
+                  !isQuiz &&
                   currentLesson.lesson_type !== "video" &&
                   currentLesson.lesson_type !== "mixed" && (
                     <VideoPlayer
@@ -329,9 +345,18 @@ export default async function LearnPage({
                     />
                   )}
 
-                {/* Notes — enrolled users only */}
-                {isEnrolled && (
+                {/* ── Notes ── */}
+                {isEnrolled && !isQuiz && (
                   <LessonNotes lessonId={currentLesson.id} courseId={courseId} />
+                )}
+
+                {/* ── Discussion ── */}
+                {isEnrolled && user && (
+                  <LessonComments
+                    lessonId={currentLesson.id}
+                    courseId={courseId}
+                    currentUserId={user.id}
+                  />
                 )}
               </div>
             </>
