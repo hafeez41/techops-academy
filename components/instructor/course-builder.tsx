@@ -27,6 +27,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { StudentsTab } from "@/components/instructor/students-tab";
 import {
   GripVertical,
@@ -44,13 +49,17 @@ import {
   LayoutTemplate,
   Users,
   BookOpen,
+  FolderPlus,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
-import type { Course, Lesson, LessonType, ProgressionMode } from "@/types";
+import type { Course, Lesson, LessonType, ProgressionMode, CourseSection } from "@/types";
 import { CATEGORIES as CAT_LIST } from "@/types";
 
 interface CourseBuilderProps {
   course: Course | null;
   lessons: Lesson[];
+  sections: CourseSection[];
   userId: string;
 }
 
@@ -63,11 +72,13 @@ const LESSON_TYPES: { value: LessonType; label: string; icon: React.ReactNode }[
 
 function SortableLesson({
   lesson,
+  sections,
   onUpdate,
   onDelete,
   onUpload,
 }: {
   lesson: Lesson & { _uploading?: boolean; _uploadPct?: number };
+  sections: CourseSection[];
   onUpdate: (id: string, fields: Partial<Lesson>) => void;
   onDelete: (id: string) => void;
   onUpload: (lessonId: string, file: File) => void;
@@ -114,6 +125,27 @@ function SortableLesson({
               />
             </div>
           </div>
+
+          {/* Section assignment */}
+          {sections.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground shrink-0">Section</Label>
+              <select
+                value={lesson.section_id ?? ""}
+                onChange={(e) =>
+                  onUpdate(lesson.id, { section_id: e.target.value || null })
+                }
+                className="h-7 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">— General (no section) —</option>
+                {sections.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Lesson type selector */}
           <div className="flex items-center gap-1.5">
@@ -218,7 +250,132 @@ function SortableLesson({
   );
 }
 
-export function CourseBuilder({ course, lessons: initialLessons, userId }: CourseBuilderProps) {
+// ── Section group with collapsible lessons ──────────────────────────────────
+
+function SectionGroup({
+  sectionId,
+  title,
+  lessons,
+  sections,
+  allLessons,
+  onUpdateLesson,
+  onDeleteLesson,
+  onUpload,
+  onDeleteSection,
+  onRenameSection,
+}: {
+  sectionId: string | null;
+  title: string;
+  lessons: (Lesson & { _uploading?: boolean; _uploadPct?: number })[];
+  sections: CourseSection[];
+  allLessons: (Lesson & { _uploading?: boolean; _uploadPct?: number })[];
+  onUpdateLesson: (id: string, fields: Partial<Lesson>) => void;
+  onDeleteLesson: (id: string) => void;
+  onUpload: (lessonId: string, file: File) => void;
+  onDeleteSection: ((id: string) => void) | null;
+  onRenameSection: ((id: string, title: string) => void) | null;
+}) {
+  const [open, setOpen] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(title);
+
+  const handleRenameBlur = () => {
+    setEditing(false);
+    if (sectionId && onRenameSection && editTitle.trim() && editTitle !== title) {
+      onRenameSection(sectionId, editTitle.trim());
+    }
+  };
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <div className="rounded-lg border border-border/60 bg-muted/20 overflow-hidden">
+        {/* Section header */}
+        <div className="flex items-center gap-2 px-3 py-2 bg-muted/40">
+          <CollapsibleTrigger
+            render={
+              <button className="text-muted-foreground hover:text-foreground transition-colors" />
+            }
+          >
+            {open ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </CollapsibleTrigger>
+
+          {sectionId && editing ? (
+            <input
+              autoFocus
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              onBlur={handleRenameBlur}
+              onKeyDown={(e) => { if (e.key === "Enter") handleRenameBlur(); }}
+              className="flex-1 rounded border border-input bg-background px-2 py-0.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+          ) : (
+            <button
+              className="flex-1 text-left text-sm font-medium hover:text-foreground transition-colors"
+              onClick={() => sectionId && setEditing(true)}
+              title={sectionId ? "Click to rename" : undefined}
+            >
+              {title}
+            </button>
+          )}
+
+          <Badge variant="outline" className="text-xs py-0 h-5">
+            {lessons.length} {lessons.length === 1 ? "lesson" : "lessons"}
+          </Badge>
+
+          {sectionId && onDeleteSection && (
+            <button
+              onClick={() => onDeleteSection(sectionId)}
+              className="text-muted-foreground hover:text-destructive transition-colors ml-1"
+              title="Delete section (lessons will be unassigned)"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Lessons in section */}
+        <CollapsibleContent>
+          {lessons.length > 0 ? (
+            <div className="p-2 space-y-2">
+              <SortableContext
+                items={lessons.map((l) => l.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {lessons.map((lesson) => (
+                  <SortableLesson
+                    key={lesson.id}
+                    lesson={lesson}
+                    sections={sections}
+                    onUpdate={onUpdateLesson}
+                    onDelete={onDeleteLesson}
+                    onUpload={onUpload}
+                  />
+                ))}
+              </SortableContext>
+            </div>
+          ) : (
+            <p className="px-4 py-3 text-xs text-muted-foreground italic">
+              No lessons in this section yet.
+            </p>
+          )}
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+}
+
+// ── Main CourseBuilder ───────────────────────────────────────────────────────
+
+export function CourseBuilder({
+  course,
+  lessons: initialLessons,
+  sections: initialSections,
+  userId,
+}: CourseBuilderProps) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -239,11 +396,13 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
   const [lessons, setLessons] = useState<(Lesson & { _uploading?: boolean; _uploadPct?: number })[]>(
     initialLessons
   );
+  const [sections, setSections] = useState<CourseSection[]>(initialSections);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [courseId, setCourseId] = useState(course?.id ?? "");
   const [saveWarning, setSaveWarning] = useState("");
+  const [addingSection, setAddingSection] = useState(false);
 
   const toggleCategory = (cat: string) =>
     setCategories((prev) => (prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]));
@@ -305,6 +464,7 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
           lesson_type: l.lesson_type ?? "video",
           content: l.content ?? null,
           external_url: l.external_url ?? null,
+          section_id: l.section_id ?? null,
         })
         .eq("id", l.id);
     }
@@ -341,10 +501,53 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
         lesson_type: "video",
         content: null,
         external_url: null,
+        section_id: null,
       })
       .select()
       .single();
     if (!error && data) setLessons((prev) => [...prev, data]);
+  };
+
+  const handleAddSection = async () => {
+    if (!courseId) { setSaveWarning("Save the course first before adding sections."); return; }
+    setSaveWarning("");
+    setAddingSection(true);
+    const { data, error } = await supabase
+      .from("course_sections")
+      .insert({
+        course_id: courseId,
+        title: "New section",
+        position: sections.length,
+      })
+      .select()
+      .single();
+    if (!error && data) setSections((prev) => [...prev, data as CourseSection]);
+    setAddingSection(false);
+  };
+
+  const handleDeleteSection = async (sectionId: string) => {
+    // Unlink lessons that belong to this section
+    setLessons((prev) =>
+      prev.map((l) => (l.section_id === sectionId ? { ...l, section_id: null } : l))
+    );
+    // Persist the unlink for already-saved lessons
+    await supabase
+      .from("lessons")
+      .update({ section_id: null })
+      .eq("section_id", sectionId);
+    // Delete the section
+    await supabase.from("course_sections").delete().eq("id", sectionId);
+    setSections((prev) => prev.filter((s) => s.id !== sectionId));
+  };
+
+  const handleRenameSection = async (sectionId: string, newTitle: string) => {
+    setSections((prev) =>
+      prev.map((s) => (s.id === sectionId ? { ...s, title: newTitle } : s))
+    );
+    await supabase
+      .from("course_sections")
+      .update({ title: newTitle })
+      .eq("id", sectionId);
   };
 
   const handleUpdateLesson = useCallback((id: string, fields: Partial<Lesson>) => {
@@ -406,6 +609,15 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
       });
     }
   };
+
+  // ── Group lessons by section for display ──────────────────────────────────
+  const unsectionedLessons = lessons.filter((l) => !l.section_id);
+  const lessonsBySection = sections.map((s) => ({
+    section: s,
+    lessons: lessons.filter((l) => l.section_id === s.id),
+  }));
+
+  const hasSections = sections.length > 0;
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
@@ -546,7 +758,21 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
                     </button>
                   )}
                   {activeTab === "curriculum" && (
-                    <div className="flex-1 flex justify-end items-center pr-1">
+                    <div className="flex-1 flex justify-end items-center gap-1.5 pr-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleAddSection}
+                        disabled={addingSection}
+                        className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        {addingSection ? (
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <FolderPlus className="mr-1.5 h-3.5 w-3.5" />
+                        )}
+                        Add section
+                      </Button>
                       <Button size="sm" variant="outline" onClick={handleAddLesson} className="h-7 text-xs">
                         <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
                         Add lesson
@@ -559,26 +785,51 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
 
             <CardContent className="pt-4">
               {activeTab === "curriculum" ? (
-                lessons.length > 0 ? (
-                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                    <SortableContext items={lessons.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-                      <div className="space-y-2">
-                        {lessons.map((lesson) => (
-                          <SortableLesson
-                            key={lesson.id}
-                            lesson={lesson}
-                            onUpdate={handleUpdateLesson}
-                            onDelete={handleDeleteLesson}
-                            onUpload={handleVideoUpload}
-                          />
-                        ))}
-                      </div>
-                    </SortableContext>
-                  </DndContext>
-                ) : (
+                lessons.length === 0 && sections.length === 0 ? (
                   <div className="flex flex-col items-center py-8 text-center text-muted-foreground">
                     <p className="text-sm">No lessons yet. Add your first lesson to get started.</p>
                   </div>
+                ) : (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <div className="space-y-3">
+                      {/* Unsectioned lessons — always shown at top */}
+                      {(!hasSections || unsectionedLessons.length > 0) && (
+                        <SectionGroup
+                          sectionId={null}
+                          title={hasSections ? "General" : "Lessons"}
+                          lessons={unsectionedLessons}
+                          sections={sections}
+                          allLessons={lessons}
+                          onUpdateLesson={handleUpdateLesson}
+                          onDeleteLesson={handleDeleteLesson}
+                          onUpload={handleVideoUpload}
+                          onDeleteSection={null}
+                          onRenameSection={null}
+                        />
+                      )}
+
+                      {/* Named sections */}
+                      {lessonsBySection.map(({ section, lessons: sLessons }) => (
+                        <SectionGroup
+                          key={section.id}
+                          sectionId={section.id}
+                          title={section.title}
+                          lessons={sLessons}
+                          sections={sections}
+                          allLessons={lessons}
+                          onUpdateLesson={handleUpdateLesson}
+                          onDeleteLesson={handleDeleteLesson}
+                          onUpload={handleVideoUpload}
+                          onDeleteSection={handleDeleteSection}
+                          onRenameSection={handleRenameSection}
+                        />
+                      ))}
+                    </div>
+                  </DndContext>
                 )
               ) : (
                 <StudentsTab
@@ -591,7 +842,7 @@ export function CourseBuilder({ course, lessons: initialLessons, userId }: Cours
           </Card>
         </div>
 
-        {/* Right: thumbnail */}
+        {/* Right: thumbnail + lesson type legend */}
         <div className="space-y-6">
           <Card>
             <CardHeader><CardTitle className="text-base">Thumbnail</CardTitle></CardHeader>

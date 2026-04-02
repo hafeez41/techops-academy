@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { BookOpen, Users, PlusCircle, Eye, EyeOff, TrendingUp } from "lucide-react";
+import { BookOpen, Users, PlusCircle, Eye, EyeOff, TrendingUp, GraduationCap } from "lucide-react";
 import { AnalyticsPanel } from "@/components/shared/analytics-panel";
+import { Progress } from "@/components/ui/progress";
 import type { Course } from "@/types";
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
   totalStudents: number;
   totalCourses: number;
   publishedCourses: number;
+  avgCompletionRate: number;
 }
 
 export function InstructorHub({
@@ -24,6 +26,7 @@ export function InstructorHub({
   totalStudents,
   totalCourses,
   publishedCourses,
+  avgCompletionRate,
 }: Props) {
   const [tab, setTab] = useState<"overview" | "analytics">("overview");
 
@@ -84,17 +87,19 @@ export function InstructorHub({
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold">{totalStudents}</p>
+                <p className="text-xs text-muted-foreground mt-1">across all courses</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Earnings
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4" /> Avg completion
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">—</p>
-                <p className="text-xs text-muted-foreground mt-1">Coming soon</p>
+                <p className="text-2xl font-bold">{avgCompletionRate}%</p>
+                <Progress value={avgCompletionRate} className="h-1.5 mt-2" />
+                <p className="text-xs text-muted-foreground mt-1">across enrolled students</p>
               </CardContent>
             </Card>
           </div>

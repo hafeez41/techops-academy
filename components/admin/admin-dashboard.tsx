@@ -58,7 +58,7 @@ export function AdminDashboard({
       .from("courses")
       .select("id, title, slug, is_published, price, categories, created_at, instructor_id, description, thumbnail_url, profiles(full_name)")
       .order("created_at", { ascending: false });
-    if (data) setCourses(data as Course[]);
+    if (data) setCourses(data as unknown as Course[]);
     router.refresh();
   };
 

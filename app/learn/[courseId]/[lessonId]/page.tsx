@@ -14,6 +14,7 @@ import { VideoPlayer } from "@/components/shared/video-player";
 import { LessonTabs } from "@/components/shared/lesson-tabs";
 import { MobileSidebar } from "@/components/shared/mobile-sidebar";
 import { LessonContent } from "@/components/shared/lesson-content";
+import { LessonNotes } from "@/components/shared/lesson-notes";
 import type { Lesson } from "@/types";
 
 interface LessonFile { id: string; name: string; url: string; size?: number | null }
@@ -40,13 +41,14 @@ export default async function LearnPage({
 }: {
   params: { courseId: string; lessonId: string };
 }) {
+  const { courseId, lessonId } = params;
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   const { data: course } = await supabase
     .from("courses")
     .select("id, title, progression_mode, lessons(*, lesson_files(*))")
-    .eq("id", params.courseId)
+    .eq("id", courseId)
     .single();
 
   if (!course) notFound();
@@ -55,7 +57,7 @@ export default async function LearnPage({
     (a: Lesson, b: Lesson) => a.position - b.position
   );
 
-  const currentLesson = lessons.find((l) => l.id === params.lessonId);
+  const currentLesson = lessons.find((l) => l.id === lessonId);
   if (!currentLesson) notFound();
 
   // Auth + enrollment gate
@@ -67,8 +69,8 @@ export default async function LearnPage({
   if (user) {
     const [{ data: profile }, { data: enrollment }, { data: progress }] = await Promise.all([
       supabase.from("profiles").select("role").eq("id", user.id).single(),
-      supabase.from("enrollments").select("id").eq("student_id", user.id).eq("course_id", params.courseId).single(),
-      supabase.from("progress").select("lesson_id").eq("student_id", user.id).eq("course_id", params.courseId),
+      supabase.from("enrollments").select("id").eq("student_id", user.id).eq("course_id", courseId).single(),
+      supabase.from("progress").select("lesson_id").eq("student_id", user.id).eq("course_id", courseId),
     ]);
     isAdmin = profile?.role === "admin";
     isEnrolled = isAdmin || !!enrollment;
@@ -80,7 +82,7 @@ export default async function LearnPage({
         .from("lesson_unlocks")
         .select("lesson_id")
         .eq("student_id", user.id)
-        .eq("course_id", params.courseId);
+        .eq("course_id", courseId);
       unlockedIds = new Set(unlocks?.map((u) => u.lesson_id) ?? []);
     } else if (isAdmin || course.progression_mode === "self_paced") {
       // All lessons accessible
@@ -90,7 +92,7 @@ export default async function LearnPage({
 
   // Access gate: free previews bypass login/enrollment
   if (!currentLesson.is_free_preview) {
-    if (!user) redirect(`/login?next=/learn/${params.courseId}/${params.lessonId}`);
+    if (!user) redirect(`/login?next=/learn/${courseId}/${lessonId}`);
     if (!isEnrolled) redirect("/courses");
   }
 
@@ -98,7 +100,7 @@ export default async function LearnPage({
   const isGated = course.progression_mode === "instructor_gated" && !isAdmin;
   const isLockedByInstructor = isGated && isEnrolled && !unlockedIds.has(currentLesson.id);
 
-  const currentIdx = lessons.findIndex((l) => l.id === params.lessonId);
+  const currentIdx = lessons.findIndex((l) => l.id === lessonId);
   const nextLesson = isEnrolled ? (lessons[currentIdx + 1] ?? null) : null;
   const isCompleted = completedIds.has(currentLesson.id);
   const completedCount = completedIds.size;
@@ -109,13 +111,13 @@ export default async function LearnPage({
     <nav className="flex-1 py-2">
       {lessons.map((lesson) => {
         const done = completedIds.has(lesson.id);
-        const active = lesson.id === params.lessonId;
+        const active = lesson.id === lessonId;
         const locked = isGated && isEnrolled && !unlockedIds.has(lesson.id) && !lesson.is_free_preview;
 
         return (
           <Link
             key={lesson.id}
-            href={locked ? "#" : `/learn/${params.courseId}/${lesson.id}`}
+            href={locked ? "#" : `/learn/${courseId}/${lesson.id}`}
             aria-disabled={locked}
             className={`flex items-start gap-3 px-4 py-3 text-sm transition-colors ${
               active
@@ -203,7 +205,7 @@ export default async function LearnPage({
               </div>
               <h2 className="text-lg font-semibold mb-2">Lesson not yet unlocked</h2>
               <p className="text-sm text-muted-foreground max-w-sm">
-                Your instructor hasn't unlocked this lesson for you yet. Check back later or reach out to them directly.
+                Your instructor hasn&apos;t unlocked this lesson for you yet. Check back later or reach out to them directly.
               </p>
             </div>
           ) : (
@@ -216,11 +218,11 @@ export default async function LearnPage({
                       <VideoPlayer
                         playbackId={currentLesson.mux_playback_id}
                         lessonId={currentLesson.id}
-                        courseId={params.courseId}
+                        courseId={courseId}
                         isCompleted={isCompleted}
                         isEnrolled={isEnrolled}
                         nextLessonId={nextLesson?.id ?? null}
-                        nextCourseId={nextLesson ? params.courseId : null}
+                        nextCourseId={nextLesson ? courseId : null}
                       />
                     ) : (
                       <div className="aspect-video flex items-center justify-center gap-3 text-zinc-500">
@@ -287,7 +289,7 @@ export default async function LearnPage({
                       </p>
                     </div>
                     <Link
-                      href={`/courses/${params.courseId}`}
+                      href={`/courses/${courseId}`}
                       className="shrink-0 text-sm font-medium text-brand hover:underline"
                     >
                       View course →
@@ -318,14 +320,19 @@ export default async function LearnPage({
                     <VideoPlayer
                       playbackId=""
                       lessonId={currentLesson.id}
-                      courseId={params.courseId}
+                      courseId={courseId}
                       isCompleted={isCompleted}
                       isEnrolled={isEnrolled}
                       nextLessonId={nextLesson?.id ?? null}
-                      nextCourseId={nextLesson ? params.courseId : null}
+                      nextCourseId={nextLesson ? courseId : null}
                       controlsOnly
                     />
                   )}
+
+                {/* Notes — enrolled users only */}
+                {isEnrolled && (
+                  <LessonNotes lessonId={currentLesson.id} courseId={courseId} />
+                )}
               </div>
             </>
           )}

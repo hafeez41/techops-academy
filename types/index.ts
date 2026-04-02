@@ -32,6 +32,7 @@ export interface Course {
 export interface Lesson {
   id: string;
   course_id: string;
+  section_id: string | null;
   title: string;
   description: string | null;
   lesson_type: LessonType;
@@ -43,6 +44,24 @@ export interface Lesson {
   position: number;
   is_free_preview: boolean;
   created_at: string;
+}
+
+export interface CourseSection {
+  id: string;
+  course_id: string;
+  title: string;
+  position: number;
+  created_at: string;
+  lessons?: Lesson[];
+}
+
+export interface LessonNote {
+  id: string;
+  student_id: string;
+  lesson_id: string;
+  course_id: string;
+  content: string;
+  updated_at: string;
 }
 
 export interface LessonUnlock {

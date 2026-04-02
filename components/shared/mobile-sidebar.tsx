@@ -15,13 +15,15 @@ export function MobileSidebar({ sidebarHeader, lessonList }: MobileSidebarProps)
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <button
-          className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          aria-label="Open course contents"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
+      <SheetTrigger
+        render={
+          <button
+            className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            aria-label="Open course contents"
+          />
+        }
+      >
+        <Menu className="h-5 w-5" />
       </SheetTrigger>
       <SheetContent side="left" className="w-72 p-0 bg-zinc-950 border-zinc-800 flex flex-col">
         {sidebarHeader}

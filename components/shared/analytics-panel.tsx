@@ -162,13 +162,14 @@ export function AnalyticsPanel({ instructorId }: Props) {
       ]);
 
       // 3. Build per-course stats
-      const stats: CourseStat[] = rawCourses.map((c: {
+      const stats: CourseStat[] = (rawCourses as unknown as Array<{
         id: string;
         title: string;
         is_published: boolean;
+        instructor_id: string;
         profiles: { full_name: string | null } | null;
         lessons: { id: string; title: string; position: number }[];
-      }) => {
+      }>).map((c) => {
         const courseEnrollments = (enrollments ?? []).filter((e) => e.course_id === c.id);
         const enrolled = courseEnrollments.length;
         const enrolledStudentIds = new Set(courseEnrollments.map((e) => e.student_id));
@@ -193,7 +194,7 @@ export function AnalyticsPanel({ instructorId }: Props) {
         // Completed students (done all lessons)
         let completedStudents = 0;
         let totalPctSum = 0;
-        for (const studentId of enrolledStudentIds) {
+        for (const studentId of Array.from(enrolledStudentIds)) {
           const done = progressByStudent.get(studentId)?.size ?? 0;
           const pct = totalLessons > 0 ? done / totalLessons : 0;
           totalPctSum += pct;

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Collapsible,
@@ -66,7 +67,7 @@ export function StudentsTab({ courseId, lessons, progressionMode }: StudentsTabP
 
     const studentIds = enrollments.map((e) => e.student_id);
 
-    // Fetch progress counts and auth emails in parallel
+    // Fetch progress counts and unlock data in parallel
     const [{ data: progressRows }, { data: unlocks }] = await Promise.all([
       supabase
         .from("progress")
@@ -98,7 +99,7 @@ export function StudentsTab({ courseId, lessons, progressionMode }: StudentsTabP
 
     const mapped: Student[] = enrollments.map((e) => ({
       id: e.student_id,
-      full_name: (e.profiles as { full_name: string | null } | null)?.full_name ?? null,
+      full_name: (e.profiles as unknown as { full_name: string | null } | null)?.full_name ?? null,
       email: e.student_id, // placeholder — shown as ID if email unavailable
       enrolled_at: e.enrolled_at,
       enrolled_by: e.enrolled_by,
@@ -190,6 +191,8 @@ export function StudentsTab({ courseId, lessons, progressionMode }: StudentsTabP
       .toUpperCase()
       .slice(0, 2);
 
+  const totalLessons = lessons.length;
+
   return (
     <div className="space-y-4">
       {/* Add student */}
@@ -228,6 +231,10 @@ export function StudentsTab({ courseId, lessons, progressionMode }: StudentsTabP
           {students.map((student) => {
             const unlockedCount = unlockedMap[student.id]?.size ?? 0;
             const isOpen = openStudentId === student.id;
+            const completionPct =
+              totalLessons > 0
+                ? Math.round((student.completedCount / totalLessons) * 100)
+                : 0;
 
             return (
               <Collapsible
@@ -250,12 +257,12 @@ export function StudentsTab({ courseId, lessons, progressionMode }: StudentsTabP
                       <div className="flex items-center gap-3 mt-0.5">
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <CheckCircle className="h-3 w-3" />
-                          {student.completedCount}/{lessons.length} completed
+                          {student.completedCount}/{totalLessons} completed
                         </span>
                         {progressionMode === "instructor_gated" && (
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <Unlock className="h-3 w-3" />
-                            {unlockedCount}/{lessons.length} unlocked
+                            {unlockedCount}/{totalLessons} unlocked
                           </span>
                         )}
                         {student.enrolled_by && (
@@ -264,17 +271,28 @@ export function StudentsTab({ courseId, lessons, progressionMode }: StudentsTabP
                           </Badge>
                         )}
                       </div>
+                      {/* Completion progress bar */}
+                      {totalLessons > 0 && (
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <Progress value={completionPct} className="h-1.5 flex-1" />
+                          <span className="text-xs tabular-nums text-muted-foreground w-8 text-right">
+                            {completionPct}%
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
                       {progressionMode === "instructor_gated" && (
-                        <CollapsibleTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
-                            Lessons
-                            <ChevronDown
-                              className={`h-3 w-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                            />
-                          </Button>
+                        <CollapsibleTrigger
+                          render={
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1" />
+                          }
+                        >
+                          Lessons
+                          <ChevronDown
+                            className={`h-3 w-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                          />
                         </CollapsibleTrigger>
                       )}
                       <Button

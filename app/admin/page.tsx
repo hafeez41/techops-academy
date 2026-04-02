@@ -47,7 +47,8 @@ export default async function AdminPage() {
           totalEnrollments: totalEnrollments ?? 0,
         }}
         recentUsers={recentUsers ?? []}
-        courses={allCourses ?? []}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        courses={(allCourses ?? []) as any}
         adminId={user.id}
       />
     </div>
