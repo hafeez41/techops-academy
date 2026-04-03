@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { getMux } from "@/lib/mux";
 
 export async function POST(req: NextRequest) {
@@ -25,11 +25,12 @@ export async function POST(req: NextRequest) {
     const duration = event.data?.duration;
 
     if (assetId && duration) {
-      const supabase = createClient();
-      await supabase
+      const supabase = createServiceClient();
+      const { error } = await supabase
         .from("lessons")
         .update({ duration_seconds: Math.round(duration) })
         .eq("mux_asset_id", assetId);
+      if (error) console.error("[mux-webhook] Failed to update duration:", error.message);
     }
   }
 
