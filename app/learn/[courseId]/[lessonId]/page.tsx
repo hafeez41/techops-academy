@@ -137,7 +137,7 @@ export default async function LearnPage({
         <div key={gi}>
           {group.title && (
             <div className="px-4 pt-4 pb-1.5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{group.title}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.title}</p>
             </div>
           )}
           {group.lessons.map((lesson) => {
@@ -152,24 +152,24 @@ export default async function LearnPage({
                 aria-disabled={locked}
                 className={`flex items-start gap-3 px-4 py-3 text-sm transition-colors ${
                   active
-                    ? "bg-zinc-800 text-zinc-100"
+                    ? "bg-accent text-accent-foreground"
                     : locked
-                    ? "text-zinc-600 cursor-not-allowed"
-                    : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                    ? "text-muted-foreground/50 cursor-not-allowed"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
                 <span className="mt-0.5 shrink-0">
                   {locked ? (
-                    <Lock className="h-4 w-4 text-zinc-700" />
+                    <Lock className="h-4 w-4 text-muted-foreground/40" />
                   ) : done ? (
-                    <CheckCircle className="h-4 w-4 text-green-400" />
+                    <CheckCircle className="h-4 w-4 text-green-500" />
                   ) : (
-                    <Circle className={`h-4 w-4 ${active ? "text-zinc-300" : "text-zinc-600"}`} />
+                    <Circle className={`h-4 w-4 ${active ? "text-foreground" : "text-muted-foreground"}`} />
                   )}
                 </span>
                 <span className="flex-1 leading-snug line-clamp-2">{lesson.title}</span>
                 {lesson.duration_seconds ? (
-                  <span className="shrink-0 text-xs text-zinc-600 tabular-nums mt-0.5">
+                  <span className="shrink-0 text-xs text-muted-foreground tabular-nums mt-0.5">
                     {formatDuration(lesson.duration_seconds)}
                   </span>
                 ) : null}
@@ -182,22 +182,22 @@ export default async function LearnPage({
   );
 
   const sidebarHeader = (
-    <div className="p-4 border-b border-zinc-800">
+    <div className="p-4 border-b border-border">
       <Link
         href="/courses"
-        className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors mb-3"
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3"
       >
         <ChevronLeft className="h-3 w-3" />
         All courses
       </Link>
-      <h2 className="font-semibold text-sm text-zinc-100 leading-snug">{course.title}</h2>
+      <h2 className="font-semibold text-sm text-foreground leading-snug">{course.title}</h2>
       {isEnrolled && (
         <div className="mt-3">
-          <div className="flex items-center justify-between text-xs text-zinc-400 mb-1.5">
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
             <span>{completedCount}/{lessons.length} completed</span>
             <span>{progressPct}%</span>
           </div>
-          <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
             <div
               className="h-full rounded-full bg-brand transition-all duration-500"
               style={{ width: `${progressPct}%` }}
@@ -213,7 +213,7 @@ export default async function LearnPage({
       <Navbar />
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop sidebar */}
-        <aside className="hidden w-72 shrink-0 overflow-y-auto border-r border-zinc-800 bg-zinc-950 lg:flex flex-col">
+        <aside className="hidden w-72 shrink-0 overflow-y-auto border-r border-border bg-card lg:flex flex-col">
           {sidebarHeader}
           {lessonList}
         </aside>

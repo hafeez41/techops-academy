@@ -25,7 +25,7 @@ export function MobileSidebar({ sidebarHeader, lessonList }: MobileSidebarProps)
       >
         <Menu className="h-5 w-5" />
       </SheetTrigger>
-      <SheetContent side="left" className="w-72 p-0 bg-zinc-950 border-zinc-800 flex flex-col">
+      <SheetContent side="left" className="w-72 p-0 bg-card border-border flex flex-col">
         {sidebarHeader}
         <div className="flex-1 overflow-y-auto">
           {lessonList}

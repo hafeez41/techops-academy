@@ -153,7 +153,7 @@ function CertificateModal({
         {/* Certificate */}
         <div className="p-6">
           <div ref={certRef} className="border-2 border-foreground/90 p-1 rounded-sm">
-            <div className="border border-yellow-500/60 bg-[#fffef9] dark:bg-zinc-900 rounded-sm px-10 py-12 text-center">
+            <div className="border border-yellow-500/60 bg-card rounded-sm px-10 py-12 text-center">
               {/* Brand */}
               <div className="flex items-center justify-center gap-2.5 mb-8">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-foreground">
@@ -310,7 +310,7 @@ export function DashboardClient({ studentName, courses }: Props) {
                       </div>
                     )}
                     <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
-                      <Badge className="gap-1 bg-yellow-500 text-black hover:bg-yellow-500">
+                      <Badge className="gap-1 bg-yellow-500 text-yellow-950 hover:bg-yellow-500">
                         <Award className="h-3 w-3" /> Completed
                       </Badge>
                     </div>

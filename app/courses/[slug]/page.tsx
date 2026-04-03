@@ -165,7 +165,7 @@ export default async function CourseDetailPage({
             />
             <div className="absolute inset-0 flex items-center justify-center bg-black/30">
               <div className="rounded-full bg-white/90 p-3.5 shadow-lg">
-                <Play className="h-6 w-6 fill-zinc-900 text-zinc-900" />
+                <Play className="h-6 w-6 fill-zinc-950 text-zinc-950" />
               </div>
             </div>
           </div>

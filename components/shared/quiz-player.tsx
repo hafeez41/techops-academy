@@ -243,7 +243,7 @@ export function QuizPlayer({ lessonId, courseId, isEnrolled, isLastLesson = fals
                   <span className={`h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center ${
                     isSelected ? "border-brand bg-brand" : "border-muted-foreground"
                   }`}>
-                    {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                    {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-brand-foreground" />}
                   </span>
                   {opt.text}
                 </button>
