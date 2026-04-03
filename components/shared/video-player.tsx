@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, ChevronRight, Loader2 } from "lucide-react";
+import { CheckCircle, ChevronRight, Loader2, Trophy } from "lucide-react";
+import { toast } from "sonner";
 
 const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), {
   ssr: false,
@@ -23,15 +24,14 @@ interface VideoPlayerProps {
   isEnrolled: boolean;
   nextLessonId: string | null;
   nextCourseId: string | null;
+  /** When true, this is the final lesson in the course */
+  isLastLesson?: boolean;
   /** Render only the mark-complete / next buttons, no video element */
   controlsOnly?: boolean;
 }
 
-// Save position every N seconds while playing
 const SAVE_INTERVAL_S = 10;
-// Don't restore position if within this many seconds of the end
 const END_THRESHOLD_S = 10;
-// Don't restore if position is less than this (treat as start)
 const START_THRESHOLD_S = 3;
 
 export function VideoPlayer({
@@ -42,6 +42,7 @@ export function VideoPlayer({
   isEnrolled,
   nextLessonId,
   nextCourseId,
+  isLastLesson = false,
   controlsOnly = false,
 }: VideoPlayerProps) {
   const [marking, setMarking] = useState(false);
@@ -86,6 +87,7 @@ export function VideoPlayer({
         body: JSON.stringify({ lessonId }),
       });
       setCompleted(false);
+      toast.info("Marked as incomplete");
     } else {
       await fetch("/api/progress", {
         method: "POST",
@@ -93,6 +95,16 @@ export function VideoPlayer({
         body: JSON.stringify({ lessonId, courseId }),
       });
       setCompleted(true);
+
+      if (isLastLesson) {
+        toast.success("🎉 Course complete! Congratulations!", {
+          description: "You've finished every lesson. Check your dashboard for your certificate.",
+          duration: 6000,
+          icon: <Trophy className="h-4 w-4 text-yellow-500" />,
+        });
+      } else {
+        toast.success("Lesson complete ✓");
+      }
     }
     setMarking(false);
     router.refresh();
@@ -120,7 +132,6 @@ export function VideoPlayer({
               if (typeof t === "number") savePosition(t);
             }}
             onDurationChange={(e) => {
-              // If resume position is near the end, reset it
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const duration = (e.target as any)?.duration;
               if (

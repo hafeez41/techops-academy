@@ -18,6 +18,7 @@ import {
   Award,
   Infinity,
   CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import { EnrollButton } from "@/components/shared/enroll-button";
 import { ReviewForm } from "@/components/shared/review-form";
@@ -68,6 +69,27 @@ export default async function CourseDetailPage({
   ]);
 
   if (!course) notFound();
+
+  // Fetch prerequisites
+  const { data: prereqRows } = await supabase
+    .from("course_prerequisites")
+    .select("prerequisite_id, courses!course_prerequisites_prerequisite_id_fkey(id, title, slug)")
+    .eq("course_id", course.id);
+  const prerequisites: { id: string; title: string; slug: string }[] =
+    (prereqRows ?? []).map((r: { prerequisite_id: string; courses: { id: string; title: string; slug: string } | null }) => r.courses).filter(Boolean) as { id: string; title: string; slug: string }[];
+
+  // Check which prerequisites the user has completed
+  let completedPrereqIds = new Set<string>();
+  if (user && prerequisites.length > 0) {
+    const prereqCourseIds = prerequisites.map((p) => p.id);
+    const { data: completions } = await supabase
+      .from("enrollments")
+      .select("course_id")
+      .eq("student_id", user.id)
+      .in("course_id", prereqCourseIds);
+    // A prerequisite is "met" if enrolled — full completion check is done at enroll time
+    completedPrereqIds = new Set((completions ?? []).map((c) => c.course_id));
+  }
 
   const isAdmin = profile?.role === "admin";
 
@@ -145,6 +167,36 @@ export default async function CourseDetailPage({
           <div className="text-3xl font-bold">
             {course.price === 0 ? "Free" : `$${course.price}`}
           </div>
+
+          {/* Prerequisites */}
+          {prerequisites.length > 0 && !isEnrolled && (
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5" />
+                Prerequisites required
+              </p>
+              <ul className="space-y-1.5">
+                {prerequisites.map((p) => {
+                  const done = completedPrereqIds.has(p.id);
+                  return (
+                    <li key={p.id} className="flex items-center gap-2 text-sm">
+                      {done ? (
+                        <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                      ) : (
+                        <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      )}
+                      <Link
+                        href={`/courses/${p.slug}`}
+                        className="hover:text-brand hover:underline underline-offset-2 transition-colors truncate"
+                      >
+                        {p.title}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
 
           {isEnrolled ? (
             <Button className="w-full h-11 text-base" asChild>

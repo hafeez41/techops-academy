@@ -103,6 +103,7 @@ export default async function LearnPage({
   const currentIdx = lessons.findIndex((l) => l.id === lessonId);
   const nextLesson = isEnrolled ? (lessons[currentIdx + 1] ?? null) : null;
   const isCompleted = completedIds.has(currentLesson.id);
+  const isLastLesson = currentIdx === lessons.length - 1;
   const completedCount = completedIds.size;
   const progressPct = lessons.length > 0 ? Math.round((completedCount / lessons.length) * 100) : 0;
 
@@ -225,6 +226,7 @@ export default async function LearnPage({
                         isEnrolled={isEnrolled}
                         nextLessonId={nextLesson?.id ?? null}
                         nextCourseId={nextLesson ? courseId : null}
+                        isLastLesson={isLastLesson}
                       />
                     ) : (
                       <div className="aspect-video flex items-center justify-center gap-3 text-zinc-500">

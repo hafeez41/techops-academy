@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Loader2, CreditCard } from "lucide-react";
+import { toast } from "sonner";
 
 interface EnrollButtonProps {
   courseId: string;
@@ -35,6 +36,7 @@ export function EnrollButton({ courseId, userId, price = 0, firstLessonId }: Enr
         body: JSON.stringify({ courseId }),
       });
       if (res.ok) {
+        toast.success("Enrolled successfully!");
         if (firstLessonId) {
           router.push(`/learn/${courseId}/${firstLessonId}`);
         } else {
@@ -42,9 +44,16 @@ export function EnrollButton({ courseId, userId, price = 0, firstLessonId }: Enr
         }
       } else if (res.status === 402) {
         setPaymentRequired(true);
+      } else if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        const msg = data.error ?? "You must complete prerequisites first.";
+        setError(msg);
+        toast.error("Prerequisites required", { description: msg });
       } else {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "Enrollment failed. Please try again.");
+        const msg = data.error ?? "Enrollment failed. Please try again.";
+        setError(msg);
+        toast.error(msg);
       }
     } catch {
       setError("Something went wrong. Please try again.");

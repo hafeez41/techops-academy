@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, CheckCircle, NotebookPen } from "lucide-react";
+import { toast } from "sonner";
 
 interface LessonNotesProps {
   lessonId: string;
@@ -30,14 +31,18 @@ export function LessonNotes({ lessonId, courseId }: LessonNotesProps) {
     async (value: string) => {
       setSaving(true);
       setSaved(false);
-      await fetch("/api/notes", {
+      const res = await fetch("/api/notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lessonId, courseId, content: value }),
       });
       setSaving(false);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      } else {
+        toast.error("Failed to save notes. Please try again.");
+      }
     },
     [lessonId, courseId]
   );

@@ -1,19 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, RefreshCw, Loader2, HelpCircle } from "lucide-react";
+import { toast } from "sonner";
 import type { QuizQuestion, QuizAttempt } from "@/types";
 
 interface QuizPlayerProps {
   lessonId: string;
   courseId: string;
   isEnrolled: boolean;
+  isLastLesson?: boolean;
   onPassed?: () => void;
 }
 
-export function QuizPlayer({ lessonId, courseId, isEnrolled, onPassed }: QuizPlayerProps) {
+export function QuizPlayer({ lessonId, courseId, isEnrolled, isLastLesson = false, onPassed }: QuizPlayerProps) {
+  const router = useRouter();
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [attempt, setAttempt] = useState<QuizAttempt | null>(null);
   const [selected, setSelected] = useState<Record<string, string>>({}); // questionId -> optionId
@@ -63,7 +67,24 @@ export function QuizPlayer({ lessonId, courseId, isEnrolled, onPassed }: QuizPla
         answers: selected,
         attempted_at: new Date().toISOString(),
       });
-      if (data.passed) onPassed?.();
+      if (data.passed) {
+        if (isLastLesson) {
+          toast.success("🎉 Course complete! Congratulations!", {
+            description: "You've passed the final quiz and finished the course.",
+            duration: 6000,
+          });
+        } else {
+          toast.success(`Quiz passed! ${data.score}% ✓`, {
+            description: "Lesson marked as complete.",
+          });
+        }
+        onPassed?.();
+        router.refresh();
+      } else {
+        toast.error(`Score: ${data.score}% — need ${questions[0]?.pass_threshold ?? 70}% to pass`, {
+          description: "Review your answers and try again.",
+        });
+      }
     }
     setSubmitting(false);
   };

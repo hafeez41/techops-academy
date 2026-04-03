@@ -22,6 +22,7 @@ import {
   Users,
   CheckCircle,
 } from "lucide-react";
+import { initials } from "@/lib/utils";
 import type { Lesson } from "@/types";
 
 interface Student {
@@ -189,13 +190,6 @@ export function StudentsTab({ courseId, lessons, progressionMode }: StudentsTabP
     }
   };
 
-  const initials = (name: string | null) =>
-    (name ?? "?")
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
 
   const totalLessons = lessons.length;
 

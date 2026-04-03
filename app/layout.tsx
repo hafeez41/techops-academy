@@ -5,6 +5,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { PageTransition } from "@/components/providers/page-transition";
 import NextTopLoader from "nextjs-toploader";
+import { Toaster } from "sonner";
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -48,6 +49,12 @@ export default function RootLayout({
           <PageTransition>
             {children}
           </PageTransition>
+          <Toaster
+            position="bottom-right"
+            richColors
+            closeButton
+            toastOptions={{ duration: 3500 }}
+          />
         </ThemeProvider>
       </body>
     </html>

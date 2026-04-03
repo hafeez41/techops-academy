@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimit, getRequestKey } from "@/lib/rate-limit";
 
 async function assertInstructorAccess(
   supabase: ReturnType<typeof createClient>,
@@ -17,6 +18,9 @@ async function assertInstructorAccess(
 
 // POST — enroll a student by email
 export async function POST(req: Request) {
+  const { success } = rateLimit(getRequestKey(req, "inst-enroll"), { limit: 20, windowMs: 60_000 });
+  if (!success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MessageSquare, Trash2, CornerDownRight, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { toast } from "sonner";
+import { initials } from "@/lib/utils";
 import type { LessonComment } from "@/types";
 
 interface LessonCommentsProps {
@@ -21,14 +23,6 @@ function formatRelative(dateStr: string): string {
   return `${Math.floor(diff / 86_400_000)}d ago`;
 }
 
-function initials(name: string | null) {
-  return (name ?? "?")
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 function CommentItem({
   comment,
@@ -191,6 +185,9 @@ export function LessonComments({ lessonId, courseId, currentUserId }: LessonComm
       const data = await res.json();
       setComments((prev) => [...prev, data.comment]);
       setBody("");
+    } else {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Failed to post comment.");
     }
     setPosting(false);
   };
@@ -214,16 +211,19 @@ export function LessonComments({ lessonId, courseId, currentUserId }: LessonComm
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/comments?id=${id}`, { method: "DELETE" });
-    // Remove from top-level or replies
-    setComments((prev) =>
-      prev
-        .filter((c) => c.id !== id)
-        .map((c) => ({
-          ...c,
-          replies: (c.replies ?? []).filter((r) => r.id !== id),
-        }))
-    );
+    const res = await fetch(`/api/comments?id=${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setComments((prev) =>
+        prev
+          .filter((c) => c.id !== id)
+          .map((c) => ({
+            ...c,
+            replies: (c.replies ?? []).filter((r) => r.id !== id),
+          }))
+      );
+    } else {
+      toast.error("Failed to delete comment.");
+    }
   };
 
   return (
