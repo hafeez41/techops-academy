@@ -784,13 +784,15 @@ export function CourseBuilder({
     const poll = async () => {
       attempts++;
       const statusRes = await fetch(`/api/mux/asset-status/${uploadId}`);
-      const { status, assetId, playbackId } = await statusRes.json();
+      const { status, assetId, playbackId, duration } = await statusRes.json();
       if (status === "ready" && playbackId) {
-        await supabase.from("lessons").update({ mux_asset_id: assetId, mux_playback_id: playbackId }).eq("id", lessonId);
+        const update: Record<string, unknown> = { mux_asset_id: assetId, mux_playback_id: playbackId };
+        if (duration) update.duration_seconds = Math.round(duration);
+        await supabase.from("lessons").update(update).eq("id", lessonId);
         setLessons((prev) =>
           prev.map((l) =>
             l.id === lessonId
-              ? { ...l, mux_asset_id: assetId, mux_playback_id: playbackId, _uploading: false, _uploadPct: undefined }
+              ? { ...l, mux_asset_id: assetId, mux_playback_id: playbackId, duration_seconds: duration ? Math.round(duration) : l.duration_seconds, _uploading: false, _uploadPct: undefined }
               : l
           )
         );

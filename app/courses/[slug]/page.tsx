@@ -70,6 +70,13 @@ export default async function CourseDetailPage({
 
   if (!course) notFound();
 
+  const { data: sectionsRaw } = await supabase
+    .from("course_sections")
+    .select("id, title, position")
+    .eq("course_id", course.id)
+    .order("position");
+  const sections = sectionsRaw ?? [];
+
   // Fetch prerequisites
   const { data: prereqRows } = await supabase
     .from("course_prerequisites")
@@ -358,56 +365,73 @@ export default async function CourseDetailPage({
                 </span>
               </div>
               <div className="rounded-lg border border-border overflow-hidden divide-y divide-border">
-                {lessons.map((lesson, idx) => {
-                  const canAccess = isEnrolled || lesson.is_free_preview;
-                  return (
-                    <div
-                      key={lesson.id}
-                      className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-muted/40 transition-colors"
-                    >
-                      <span className="shrink-0 w-4 text-center text-xs text-muted-foreground">
-                        {idx + 1}
-                      </span>
+                {(() => {
+                  // Group lessons by section
+                  const groups: { title: string | null; lessons: typeof lessons }[] = [];
+                  if (sections.length > 0) {
+                    const unsectioned = lessons.filter((l) => !l.section_id);
+                    sections.forEach((s) => {
+                      const sLessons = lessons.filter((l) => l.section_id === s.id);
+                      if (sLessons.length > 0) groups.push({ title: s.title, lessons: sLessons });
+                    });
+                    if (unsectioned.length > 0) groups.push({ title: null, lessons: unsectioned });
+                  } else {
+                    groups.push({ title: null, lessons });
+                  }
 
-                      {canAccess ? (
-                        <Link
-                          href={`/learn/${course.id}/${lesson.id}`}
-                          className="flex flex-1 items-center gap-3 min-w-0 hover:text-brand transition-colors"
-                        >
-                          <span className="shrink-0">
-                            <Play className="h-4 w-4 text-brand" />
-                          </span>
-                          <span className="flex-1 truncate">{lesson.title}</span>
-                        </Link>
-                      ) : (
-                        <>
-                          <span className="shrink-0">
-                            <Lock className="h-4 w-4 text-muted-foreground" />
-                          </span>
-                          <span className="flex-1 truncate text-muted-foreground">
-                            {lesson.title}
-                          </span>
-                        </>
+                  let globalIdx = 0;
+                  return groups.map((group, gi) => (
+                    <div key={gi}>
+                      {group.title && (
+                        <div className="px-4 py-2.5 bg-muted/40 border-b border-border">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.title}</p>
+                        </div>
                       )}
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        {lesson.is_free_preview && !isEnrolled && (
-                          <Badge
-                            variant="outline"
-                            className="text-xs border-brand/40 text-brand py-0"
+                      {group.lessons.map((lesson) => {
+                        const idx = globalIdx++;
+                        const canAccess = isEnrolled || lesson.is_free_preview;
+                        return (
+                          <div
+                            key={lesson.id}
+                            className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-muted/40 transition-colors"
                           >
-                            Preview
-                          </Badge>
-                        )}
-                        {lesson.duration_seconds ? (
-                          <span className="text-xs text-muted-foreground tabular-nums">
-                            {formatLessonDuration(lesson.duration_seconds)}
-                          </span>
-                        ) : null}
-                      </div>
+                            <span className="shrink-0 w-4 text-center text-xs text-muted-foreground">
+                              {idx + 1}
+                            </span>
+                            {canAccess ? (
+                              <Link
+                                href={`/learn/${course.id}/${lesson.id}`}
+                                className="flex flex-1 items-center gap-3 min-w-0 hover:text-brand transition-colors"
+                              >
+                                <span className="shrink-0">
+                                  <Play className="h-4 w-4 text-brand" />
+                                </span>
+                                <span className="flex-1 truncate">{lesson.title}</span>
+                              </Link>
+                            ) : (
+                              <>
+                                <span className="shrink-0">
+                                  <Lock className="h-4 w-4 text-muted-foreground" />
+                                </span>
+                                <span className="flex-1 truncate text-muted-foreground">{lesson.title}</span>
+                              </>
+                            )}
+                            <div className="flex items-center gap-2 shrink-0">
+                              {lesson.is_free_preview && !isEnrolled && (
+                                <Badge variant="outline" className="text-xs border-brand/40 text-brand py-0">Preview</Badge>
+                              )}
+                              {lesson.duration_seconds ? (
+                                <span className="text-xs text-muted-foreground tabular-nums">
+                                  {formatLessonDuration(lesson.duration_seconds)}
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                  ));
+                })()}
               </div>
             </div>
 
