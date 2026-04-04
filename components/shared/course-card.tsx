@@ -1,8 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { BookOpen, Star, Clock, Users } from "lucide-react";
+import { Star, Clock, BookOpen, Users, ArrowRight } from "lucide-react";
 import type { Course } from "@/types";
 
 interface CourseCardProps {
@@ -39,7 +37,7 @@ export function CourseCard({ course, isAdmin = false }: CourseCardProps) {
 
   return (
     <Link href={`/courses/${course.slug}`} className="group block h-full">
-      <div className="relative flex flex-col h-full rounded-xl border border-border/60 bg-card overflow-hidden transition-all duration-300 hover:border-brand/50 hover:shadow-xl hover:shadow-brand/5 hover:-translate-y-0.5">
+      <div className="relative flex flex-col h-full rounded-2xl bg-card overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-black/20 border border-border/50 hover:border-brand/50">
 
         {/* Thumbnail */}
         <div className="relative aspect-video w-full overflow-hidden bg-muted shrink-0">
@@ -48,104 +46,104 @@ export function CourseCard({ course, isAdmin = false }: CourseCardProps) {
               src={course.thumbnail_url}
               alt={course.title}
               fill
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              className="object-cover transition-transform duration-700 group-hover:scale-105"
             />
           ) : (
-            <div className="flex h-full items-center justify-center bg-gradient-to-br from-brand/20 via-muted to-muted/60">
-              <div className="rounded-full bg-background/60 p-4 backdrop-blur-sm">
-                <BookOpen className="h-8 w-8 text-brand/70" />
+            <div className="flex h-full items-center justify-center bg-gradient-to-br from-brand/20 via-muted to-card">
+              <div className="flex flex-col items-center gap-2 opacity-60">
+                <BookOpen className="h-10 w-10 text-brand" />
               </div>
             </div>
           )}
 
-          {/* Overlay gradient at bottom of image */}
-          <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/40 to-transparent" />
+          {/* Gradient scrim — bleeds into card body so there's no hard edge */}
+          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-card to-transparent" />
 
-          {/* Badges */}
-          <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5">
-            {course.price === 0 && (
-              <Badge className="bg-brand text-brand-foreground border-0 text-xs font-semibold shadow-sm">
-                Free
-              </Badge>
-            )}
+          {/* Price pinned bottom-left over scrim */}
+          <div className="absolute bottom-3 left-4">
+            <span className={`text-xl font-black tracking-tight leading-none ${isPaid ? "text-foreground" : "text-brand"}`}>
+              {isPaid ? `$${course.price}` : "Free"}
+            </span>
           </div>
+
+          {/* Category top-right */}
           {course.categories?.[0] && (
-            <Badge
-              variant="secondary"
-              className="absolute top-2.5 right-2.5 text-xs bg-background/80 backdrop-blur-sm border-0"
-            >
-              {course.categories[0]}
-            </Badge>
+            <div className="absolute top-3 right-3">
+              <span className="text-[10px] font-bold uppercase tracking-widest bg-background/85 backdrop-blur-md text-foreground/70 px-2.5 py-1 rounded-lg border border-border/50">
+                {course.categories[0]}
+              </span>
+            </div>
+          )}
+
+          {/* Free badge top-left */}
+          {course.price === 0 && (
+            <div className="absolute top-3 left-3">
+              <span className="text-[10px] font-black uppercase tracking-widest bg-brand text-brand-foreground px-2.5 py-1 rounded-lg">
+                Free
+              </span>
+            </div>
           )}
         </div>
 
-        {/* Content */}
-        <div className="flex flex-col flex-1 p-4 gap-3">
+        {/* Body */}
+        <div className="flex flex-col flex-1 px-4 pt-1 pb-4 gap-3">
+
           {/* Title */}
-          <h3 className="font-semibold leading-snug line-clamp-2 text-foreground group-hover:text-brand transition-colors duration-200">
+          <h3 className="font-bold text-[15px] leading-snug line-clamp-2 text-foreground group-hover:text-brand transition-colors duration-200 pt-1">
             {course.title}
           </h3>
 
-          {/* Instructor */}
+          {/* Instructor row */}
           <div className="flex items-center gap-2">
-            <Avatar className="h-5 w-5 shrink-0">
-              <AvatarImage src={course.profiles?.avatar_url ?? ""} />
-              <AvatarFallback className="text-[8px] bg-brand/15 text-brand font-semibold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand/15 text-brand text-[9px] font-black ring-1 ring-brand/20">
+              {initials}
+            </div>
             <span className="text-xs text-muted-foreground truncate">{instructorName}</span>
           </div>
 
           {/* Rating */}
           {avgRating ? (
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-yellow-500">{avgRating.toFixed(1)}</span>
+              <span className="text-xs font-black text-yellow-500 tabular-nums">{avgRating.toFixed(1)}</span>
               <div className="flex gap-px">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star
                     key={i}
-                    className={`h-3 w-3 ${
-                      i < Math.round(avgRating)
-                        ? "fill-yellow-400 text-yellow-400"
-                        : "text-muted-foreground/30"
-                    }`}
+                    className={`h-3 w-3 ${i < Math.round(avgRating) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/20"}`}
                   />
                 ))}
               </div>
-              <span className="text-xs text-muted-foreground">({course.reviews!.length})</span>
+              <span className="text-xs text-muted-foreground/60">({course.reviews!.length})</span>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground/60 italic">No ratings yet</p>
+            <p className="text-xs text-muted-foreground/40 italic">No ratings yet</p>
           )}
 
-          {/* Meta row */}
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <BookOpen className="h-3.5 w-3.5 shrink-0" />
-              {lessonCount} lesson{lessonCount !== 1 ? "s" : ""}
-            </span>
-            {totalSeconds > 0 && (
-              <span className="flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5 shrink-0" />
-                {formatDuration(totalSeconds)}
-              </span>
-            )}
-            {isAdmin && studentCount > 0 && (
-              <span className="flex items-center gap-1">
-                <Users className="h-3.5 w-3.5 shrink-0" />
-                {studentCount.toLocaleString()}
-              </span>
-            )}
-          </div>
+          {/* Spacer */}
+          <div className="flex-1" />
 
-          {/* Price footer */}
-          <div className="mt-auto pt-3 border-t border-border/50 flex items-center justify-between">
-            <span className={`font-bold text-base ${isPaid ? "text-foreground" : "text-brand"}`}>
-              {isPaid ? `$${course.price.toLocaleString()}` : "Free"}
-            </span>
-            <span className="text-xs text-muted-foreground group-hover:text-brand transition-colors font-medium">
-              View course →
+          {/* Bottom meta row */}
+          <div className="flex items-center justify-between pt-3 border-t border-border/40">
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <BookOpen className="h-3.5 w-3.5 shrink-0" />
+                {lessonCount}
+              </span>
+              {totalSeconds > 0 && (
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5 shrink-0" />
+                  {formatDuration(totalSeconds)}
+                </span>
+              )}
+              {isAdmin && studentCount > 0 && (
+                <span className="flex items-center gap-1">
+                  <Users className="h-3.5 w-3.5 shrink-0" />
+                  {studentCount.toLocaleString()}
+                </span>
+              )}
+            </div>
+            <span className="text-xs text-muted-foreground/50 group-hover:text-brand transition-colors duration-200 flex items-center gap-0.5 font-semibold">
+              View <ArrowRight className="h-3 w-3" />
             </span>
           </div>
         </div>
