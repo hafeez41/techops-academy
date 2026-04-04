@@ -165,15 +165,15 @@ const businessHours = [
 function FaqItem({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border border-border/60 rounded-xl overflow-hidden">
+    <div className={`rounded-xl border overflow-hidden transition-all duration-200 ${open ? "border-brand/30 shadow-sm shadow-brand/5" : "border-border/60 hover:border-border"}`}>
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left hover:bg-muted/30 transition-colors"
+        className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left hover:bg-muted/20 transition-colors"
       >
         <span className="font-semibold text-sm leading-snug">{question}</span>
-        <ChevronDown
-          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-        />
+        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-200 ${open ? "bg-brand text-brand-foreground rotate-180" : "bg-muted text-muted-foreground"}`}>
+          <ChevronDown className="h-3.5 w-3.5" />
+        </div>
       </button>
       {open && (
         <div className="px-6 pb-5 text-sm text-muted-foreground leading-relaxed border-t border-border/40 pt-4">
@@ -205,6 +205,8 @@ export default function HomePage() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,hsl(var(--border))_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border))_1px,transparent_1px)] bg-[size:64px_64px] opacity-40" />
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-background/50 to-background" />
+        <div className="absolute -top-32 -left-32 -z-10 h-96 w-96 rounded-full bg-brand/10 blur-3xl" />
+        <div className="absolute top-20 right-0 -z-10 h-64 w-64 rounded-full bg-brand/5 blur-3xl" />
 
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24 sm:py-36">
           <div className="max-w-3xl animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -249,11 +251,14 @@ export default function HomePage() {
       {/* <section className="py-24 px-4">...</section> */}
 
       {/* Free Consultation */}
-      <section className="py-16 px-4 bg-brand/5 border-y border-brand/10">
-        <div className="mx-auto max-w-7xl">
+      <section className="py-16 px-4 relative overflow-hidden border-y border-brand/15">
+        <div className="absolute inset-0 bg-gradient-to-r from-brand/8 via-brand/5 to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand/30 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-brand/30 to-transparent" />
+        <div className="relative mx-auto max-w-7xl">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="flex items-center gap-5">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/10 shrink-0">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/15 ring-1 ring-brand/20 shrink-0">
                 <MessageSquare className="h-7 w-7 text-brand" />
               </div>
               <div>
@@ -264,20 +269,20 @@ export default function HomePage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-3 shrink-0">
-              <div className="flex flex-col items-center px-5 py-3 rounded-xl border border-border/60 bg-background text-center">
-                <span className="text-2xl font-bold text-brand">Free</span>
+              <div className="flex flex-col items-center px-5 py-3 rounded-xl border border-brand/20 bg-brand/5 text-center">
+                <span className="text-2xl font-extrabold text-brand">Free</span>
                 <span className="text-xs text-muted-foreground mt-0.5">30 minutes</span>
               </div>
-              <div className="flex flex-col items-center px-5 py-3 rounded-xl border border-border/60 bg-background text-center">
-                <span className="text-2xl font-bold">$100</span>
+              <div className="flex flex-col items-center px-5 py-3 rounded-xl border border-border/60 bg-card text-center">
+                <span className="text-2xl font-extrabold">$100</span>
                 <span className="text-xs text-muted-foreground mt-0.5">1 hour</span>
               </div>
               <Button
                 size="lg"
                 asChild
-                className="bg-brand text-brand-foreground hover:bg-brand/90 font-semibold h-full px-6"
+                className="bg-brand text-brand-foreground hover:bg-brand/90 font-semibold h-full px-6 shadow-md shadow-brand/20"
               >
-                <Link href="/#contact">Book now</Link>
+                <Link href="/#contact">Book now →</Link>
               </Button>
             </div>
           </div>
@@ -308,19 +313,18 @@ export default function HomePage() {
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.07, duration: 0.3 }}
                 >
-                  <Card className="group border-border/60 hover:border-brand/30 hover:bg-brand/5 transition-all duration-200 cursor-default">
-                    <CardContent className="flex flex-col gap-3 p-5">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted group-hover:bg-brand/10 transition-colors">
-                        <Icon className="h-4 w-4 text-muted-foreground group-hover:text-brand transition-colors" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-sm leading-snug">{path.title}</p>
-                        <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                          {path.description}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div className="group relative rounded-xl border border-border/60 bg-card p-5 flex flex-col gap-3 cursor-default overflow-hidden transition-all duration-300 hover:border-brand/40 hover:shadow-lg hover:shadow-brand/5 hover:-translate-y-0.5">
+                    <div className="absolute inset-0 bg-gradient-to-br from-brand/0 to-brand/0 group-hover:from-brand/5 group-hover:to-transparent transition-all duration-300" />
+                    <div className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-muted group-hover:bg-brand/15 transition-colors duration-300 ring-1 ring-border/60 group-hover:ring-brand/30">
+                      <Icon className="h-5 w-5 text-muted-foreground group-hover:text-brand transition-colors duration-300" />
+                    </div>
+                    <div className="relative">
+                      <p className="font-semibold text-sm leading-snug group-hover:text-foreground transition-colors">{path.title}</p>
+                      <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                        {path.description}
+                      </p>
+                    </div>
+                  </div>
                 </motion.div>
               );
             })}
@@ -374,13 +378,12 @@ export default function HomePage() {
                 { value: "100%", label: "Online & self-paced", sub: "Learn on your schedule" },
                 { value: "$0", label: "Get started free", sub: "Upgrade when ready" },
               ].map((stat) => (
-                <Card key={stat.label} className="border-border/60 h-full">
-                  <CardContent className="p-5">
-                    <p className="text-3xl font-bold text-brand">{stat.value}</p>
-                    <p className="mt-1 font-semibold text-sm">{stat.label}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{stat.sub}</p>
-                  </CardContent>
-                </Card>
+                <div key={stat.label} className="relative rounded-xl border border-border/60 bg-card p-5 overflow-hidden">
+                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand/20 to-transparent" />
+                  <p className="text-3xl font-extrabold text-brand tracking-tight">{stat.value}</p>
+                  <p className="mt-1.5 font-semibold text-sm">{stat.label}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{stat.sub}</p>
+                </div>
               ))}
             </div>
           </div>
@@ -408,23 +411,31 @@ export default function HomePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1, duration: 0.4 }}
+                className="h-full"
               >
-                <Card className="h-full border-border/60 hover:border-brand/30 transition-all duration-200">
-                  <CardContent className="flex flex-col gap-4 p-6">
-                    <div className="flex gap-1">
-                      {Array.from({ length: t.rating }).map((_, j) => (
-                        <Star key={j} className="h-4 w-4 fill-brand text-brand" />
-                      ))}
+                <div className="relative h-full rounded-xl border border-border/60 bg-card p-6 flex flex-col gap-4 overflow-hidden transition-all duration-300 hover:border-brand/30 hover:shadow-lg hover:shadow-brand/5 hover:-translate-y-0.5">
+                  {/* Subtle top gradient accent */}
+                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand/30 to-transparent" />
+                  {/* Large decorative quote mark */}
+                  <div className="absolute top-4 right-5 text-6xl font-serif leading-none text-brand/8 select-none pointer-events-none">&ldquo;</div>
+                  <div className="flex gap-0.5">
+                    {Array.from({ length: t.rating }).map((_, j) => (
+                      <Star key={j} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed flex-1 relative z-10">
+                    &ldquo;{t.text}&rdquo;
+                  </p>
+                  <div className="flex items-center gap-3 pt-3 border-t border-border/40">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/15 text-brand font-bold text-sm">
+                      {t.name.charAt(0)}
                     </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed flex-1">
-                      &ldquo;{t.text}&rdquo;
-                    </p>
-                    <div className="border-t border-border/40 pt-4">
-                      <p className="font-semibold text-sm">{t.name}</p>
+                    <div>
+                      <p className="font-semibold text-sm leading-tight">{t.name}</p>
                       <p className="text-xs text-brand mt-0.5">{t.role}</p>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </motion.div>
             ))}
           </div>

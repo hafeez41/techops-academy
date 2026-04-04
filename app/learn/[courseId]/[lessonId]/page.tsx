@@ -136,8 +136,10 @@ export default async function LearnPage({
       {sidebarGroups.map((group, gi) => (
         <div key={gi}>
           {group.title && (
-            <div className="px-4 pt-4 pb-1.5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.title}</p>
+            <div className="px-4 pt-5 pb-2 flex items-center gap-2">
+              <div className="h-px flex-1 bg-border/60" />
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 shrink-0">{group.title}</p>
+              <div className="h-px flex-1 bg-border/60" />
             </div>
           )}
           {group.lessons.map((lesson) => {
@@ -152,10 +154,10 @@ export default async function LearnPage({
                 aria-disabled={locked}
                 className={`flex items-start gap-3 px-4 py-3 text-sm transition-colors ${
                   active
-                    ? "bg-accent text-accent-foreground"
+                    ? "border-l-2 border-brand bg-brand/8 text-foreground"
                     : locked
-                    ? "text-muted-foreground/50 cursor-not-allowed"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "border-l-2 border-transparent text-muted-foreground/50 cursor-not-allowed"
+                    : "border-l-2 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
                 <span className="mt-0.5 shrink-0">
@@ -163,8 +165,10 @@ export default async function LearnPage({
                     <Lock className="h-4 w-4 text-muted-foreground/40" />
                   ) : done ? (
                     <CheckCircle className="h-4 w-4 text-green-500" />
+                  ) : active ? (
+                    <div className="h-2 w-2 rounded-full bg-brand mt-1 shrink-0" />
                   ) : (
-                    <Circle className={`h-4 w-4 ${active ? "text-foreground" : "text-muted-foreground"}`} />
+                    <Circle className="h-4 w-4 text-muted-foreground/40" />
                   )}
                 </span>
                 <span className="flex-1 leading-snug line-clamp-2">{lesson.title}</span>
@@ -197,9 +201,9 @@ export default async function LearnPage({
             <span>{completedCount}/{lessons.length} completed</span>
             <span>{progressPct}%</span>
           </div>
-          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
             <div
-              className="h-full rounded-full bg-brand transition-all duration-500"
+              className="h-full rounded-full bg-brand transition-all duration-500 shadow-[0_0_6px_hsl(var(--brand)/0.4)]"
               style={{ width: `${progressPct}%` }}
             />
           </div>
@@ -297,15 +301,17 @@ export default async function LearnPage({
               <div className="max-w-5xl mx-auto px-4 py-6">
                 <div className="flex items-start justify-between gap-4 mb-6">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">
-                      Lesson {currentIdx + 1} of {lessons.length}
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                        Lesson {currentIdx + 1} of {lessons.length}
+                      </span>
                       {!isEnrolled && currentLesson.is_free_preview && (
-                        <span className="ml-2 text-brand font-medium">· Free preview</span>
+                        <span className="inline-flex items-center rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-medium text-brand">Free preview</span>
                       )}
                       {isQuiz && (
-                        <span className="ml-2 text-muted-foreground">· Quiz</span>
+                        <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">Quiz</span>
                       )}
-                    </p>
+                    </div>
                     <h1 className="text-xl font-bold leading-snug">{currentLesson.title}</h1>
                   </div>
                   {isCompleted && (
@@ -318,18 +324,13 @@ export default async function LearnPage({
 
                 {/* Enroll CTA for preview viewers */}
                 {!isEnrolled && currentLesson.is_free_preview && (
-                  <div className="mb-6 rounded-lg border border-brand/30 bg-brand/5 px-5 py-4 flex items-center justify-between gap-4">
+                  <div className="mb-6 rounded-xl border border-brand/25 bg-gradient-to-r from-brand/8 via-brand/5 to-transparent px-5 py-4 flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-sm font-medium">Enjoying this preview?</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Enroll to unlock all lessons and track your progress.
-                      </p>
+                      <p className="text-sm font-semibold">Enjoying this preview?</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Enroll to unlock all lessons and track your progress.</p>
                     </div>
-                    <Link
-                      href={`/courses/${courseId}`}
-                      className="shrink-0 text-sm font-medium text-brand hover:underline"
-                    >
-                      View course →
+                    <Link href={`/courses/${courseId}`} className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-foreground hover:bg-brand/90 transition-colors">
+                      Enroll now →
                     </Link>
                   </div>
                 )}
