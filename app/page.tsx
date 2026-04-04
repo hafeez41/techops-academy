@@ -31,10 +31,10 @@ import {
 } from "lucide-react";
 
 const scrollReveal = {
-  initial: { opacity: 1, y: 10 },
+  initial: { opacity: 0, y: 16 },
   whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true },
-  transition: { duration: 0.4 },
+  viewport: { once: true, margin: "-60px" },
+  transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
 };
 
 const courses = [
@@ -308,10 +308,10 @@ export default function HomePage() {
               return (
                 <motion.div
                   key={path.title}
-                  initial={{ opacity: 1, y: 8 }}
+                  initial={{ opacity: 0, y: 12 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.07, duration: 0.3 }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{ delay: i * 0.07, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <div className="group relative rounded-xl border border-border/60 bg-card p-5 flex flex-col gap-3 cursor-default overflow-hidden transition-all duration-300 hover:border-brand/40 hover:shadow-lg hover:shadow-brand/5 hover:-translate-y-0.5">
                     <div className="absolute inset-0 bg-gradient-to-br from-brand/0 to-brand/0 group-hover:from-brand/5 group-hover:to-transparent transition-all duration-300" />
@@ -407,10 +407,10 @@ export default function HomePage() {
             {testimonials.map((t, i) => (
               <motion.div
                 key={t.name}
-                initial={{ opacity: 1, y: 10 }}
+                initial={{ opacity: 0, y: 14 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1, duration: 0.4 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ delay: i * 0.1, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                 className="h-full"
               >
                 <div className="relative h-full rounded-xl border border-border/60 bg-card p-6 flex flex-col gap-4 overflow-hidden transition-all duration-300 hover:border-brand/30 hover:shadow-lg hover:shadow-brand/5 hover:-translate-y-0.5">

@@ -28,48 +28,48 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 13% 88%;
-    --input: 220 13% 88%;
-    --ring: 38 78% 52%;
+    --border: 220 13% 86%;
+    --input: 220 13% 86%;
+    --ring: 38 85% 50%;
 
     /* Amber-gold brand color */
-    --brand: 38 78% 52%;
+    --brand: 38 85% 50%;
     --brand-foreground: 224 20% 8%;
 
     --radius: 0.6rem;
   }
 
   .dark {
-    --background: 224 20% 7%;
-    --foreground: 210 20% 94%;
+    --background: 224 22% 6%;
+    --foreground: 210 20% 95%;
 
     --card: 224 20% 10%;
-    --card-foreground: 210 20% 94%;
+    --card-foreground: 210 20% 95%;
 
     --popover: 224 20% 10%;
-    --popover-foreground: 210 20% 94%;
+    --popover-foreground: 210 20% 95%;
 
-    --primary: 210 20% 94%;
-    --primary-foreground: 224 20% 7%;
+    --primary: 210 20% 95%;
+    --primary-foreground: 224 22% 6%;
 
-    --secondary: 224 16% 16%;
-    --secondary-foreground: 210 20% 94%;
+    --secondary: 224 18% 15%;
+    --secondary-foreground: 210 20% 95%;
 
-    --muted: 224 16% 16%;
-    --muted-foreground: 218 10% 58%;
+    --muted: 224 18% 15%;
+    --muted-foreground: 218 12% 56%;
 
-    --accent: 224 16% 16%;
-    --accent-foreground: 210 20% 94%;
+    --accent: 224 18% 15%;
+    --accent-foreground: 210 20% 95%;
 
     --destructive: 0 63% 50%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 224 16% 18%;
-    --input: 224 16% 18%;
-    --ring: 38 78% 52%;
+    --border: 224 16% 20%;
+    --input: 224 16% 20%;
+    --ring: 38 85% 55%;
 
-    --brand: 38 78% 52%;
-    --brand-foreground: 224 20% 5%;
+    --brand: 38 85% 55%;
+    --brand-foreground: 224 22% 5%;
   }
 }
 
