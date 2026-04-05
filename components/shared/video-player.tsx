@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { CheckCircle, ChevronRight, Loader2, Trophy, RotateCcw } from "lucide-react";
+import { CheckCircle, ChevronRight, Loader2, Trophy, RotateCcw, Play } from "lucide-react";
 import { toast } from "sonner";
 import { extractYouTubeId } from "@/lib/utils";
+import Image from "next/image";
 
 const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), {
   ssr: false,
@@ -35,6 +36,58 @@ interface VideoPlayerProps {
 const SAVE_INTERVAL_S = 10;
 const END_THRESHOLD_S = 10;
 const START_THRESHOLD_S = 3;
+
+/** Custom poster + lazy-iframe YouTube player. Only loads the actual iframe
+ *  after the user clicks play — faster page load, no YouTube branding on load. */
+function YouTubePlayer({ youtubeId }: { youtubeId: string }) {
+  const [activated, setActivated] = useState(false);
+  const thumbnailUrl = `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
+
+  if (activated) {
+    return (
+      <iframe
+        src={`https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0&color=white&modestbranding=1`}
+        title="Lesson video"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+        className="absolute inset-0 w-full h-full border-0"
+      />
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setActivated(true)}
+      className="absolute inset-0 w-full h-full group focus:outline-none"
+      aria-label="Play video"
+    >
+      {/* Thumbnail */}
+      <Image
+        src={thumbnailUrl}
+        alt="Video thumbnail"
+        fill
+        className="object-cover"
+        unoptimized
+        priority
+      />
+
+      {/* Dark gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+
+      {/* Play button */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="relative flex items-center justify-center w-16 h-16 rounded-full bg-brand/90 border-2 border-brand shadow-[0_0_40px_rgba(217,119,6,0.5)] group-hover:scale-110 group-hover:bg-brand group-hover:shadow-[0_0_60px_rgba(217,119,6,0.7)] transition-all duration-200">
+          <Play className="h-7 w-7 text-black fill-black ml-1" />
+        </div>
+      </div>
+
+      {/* Bottom hint */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 font-mono text-[9px] uppercase tracking-widest text-white/40 group-hover:text-white/60 transition-colors">
+        click to play
+      </div>
+    </button>
+  );
+}
 
 export function VideoPlayer({
   playbackId,
@@ -176,13 +229,7 @@ export function VideoPlayer({
               )}
             </>
           ) : hasYoutube ? (
-            <iframe
-              src={`https://www.youtube.com/embed/${youtubeId}?rel=0&modestbranding=1&color=white`}
-              title="Lesson video"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              className="absolute inset-0 w-full h-full border-0"
-            />
+            <YouTubePlayer youtubeId={youtubeId} />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center gap-3 text-zinc-600">
               <Loader2 className="h-5 w-5 animate-pulse" />
