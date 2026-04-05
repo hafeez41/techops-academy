@@ -3,12 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { BookOpen, Users, PlusCircle, Eye, EyeOff, TrendingUp, GraduationCap } from "lucide-react";
+import { BookOpen, TrendingUp, PlusCircle, ArrowUpRight } from "lucide-react";
 import { AnalyticsPanel } from "@/components/shared/analytics-panel";
-import { Progress } from "@/components/ui/progress";
 import type { Course } from "@/types";
 
 interface Props {
@@ -20,6 +16,8 @@ interface Props {
   avgCompletionRate: number;
 }
 
+type Tab = "overview" | "analytics";
+
 export function InstructorHub({
   instructorId,
   courses,
@@ -28,130 +26,164 @@ export function InstructorHub({
   publishedCourses,
   avgCompletionRate,
 }: Props) {
-  const [tab, setTab] = useState<"overview" | "analytics">("overview");
+  const [tab, setTab] = useState<Tab>("overview");
+
+  const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: "overview",  label: "Overview",  icon: <BookOpen className="h-3.5 w-3.5" /> },
+    { id: "analytics", label: "Analytics", icon: <TrendingUp className="h-3.5 w-3.5" /> },
+  ];
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Instructor Hub</h1>
-          <p className="mt-1 text-muted-foreground">Manage your courses and students</p>
-        </div>
-        <Button asChild>
-          <Link href="/instructor/courses/new">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            New course
-          </Link>
-        </Button>
-      </div>
+    <div className="w-full">
 
-      {/* Tabs */}
-      <div className="mb-6 flex gap-1 border-b border-border">
-        {(["overview", "analytics"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
-              tab === t
-                ? "border-brand text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t === "analytics" && <TrendingUp className="h-3.5 w-3.5" />}
-            {t.charAt(0).toUpperCase() + t.slice(1)}
-          </button>
-        ))}
-      </div>
+      {/* ── Header bar ── */}
+      <div className="border-b border-border/60 bg-card/40">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between">
+            {/* Title */}
+            <div className="flex items-center gap-3 py-4">
+              <span className="font-mono text-xs text-brand select-none">~/</span>
+              <h1 className="text-sm font-bold tracking-tight">Instructor Hub</h1>
+            </div>
 
-      {/* ── Overview ── */}
-      {tab === "overview" && (
-        <>
-          {/* Stats */}
-          <div className="grid gap-4 sm:grid-cols-3 mb-10">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <BookOpen className="h-4 w-4" /> Total courses
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{totalCourses}</p>
-                <p className="text-xs text-muted-foreground mt-1">{publishedCourses} published</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <Users className="h-4 w-4" /> Total students
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{totalStudents}</p>
-                <p className="text-xs text-muted-foreground mt-1">across all courses</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <GraduationCap className="h-4 w-4" /> Avg completion
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{avgCompletionRate}%</p>
-                <Progress value={avgCompletionRate} className="h-1.5 mt-2" />
-                <p className="text-xs text-muted-foreground mt-1">across enrolled students</p>
-              </CardContent>
-            </Card>
+            {/* Right: tabs + action */}
+            <div className="flex items-stretch gap-0">
+              <nav className="flex items-stretch">
+                {TABS.map(({ id, label, icon }) => (
+                  <button
+                    key={id}
+                    onClick={() => setTab(id)}
+                    className={`flex items-center gap-1.5 px-4 h-[57px] text-xs font-semibold border-b-2 transition-all ${
+                      tab === id
+                        ? "border-brand text-foreground"
+                        : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                    }`}
+                  >
+                    {icon}
+                    <span className="hidden sm:inline">{label}</span>
+                  </button>
+                ))}
+              </nav>
+
+              <div className="flex items-center pl-4 border-l border-border/50 ml-2">
+                <Button asChild className="rounded-lg h-7 text-xs font-mono gap-1.5 bg-brand text-brand-foreground hover:bg-brand/90">
+                  <Link href="/instructor/courses/new">
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">new course</span>
+                  </Link>
+                </Button>
+              </div>
+            </div>
           </div>
+        </div>
+      </div>
 
-          <Separator className="mb-8" />
-
-          {/* Courses list */}
-          <h2 className="text-lg font-semibold mb-4">Your courses</h2>
-          {courses.length > 0 ? (
-            <div className="space-y-3">
-              {courses.map((course) => (
-                <Link key={course.id} href={`/instructor/courses/${course.id}`}>
-                  <Card className="hover:border-foreground/20 transition-all cursor-pointer">
-                    <CardContent className="flex items-center justify-between p-4">
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{course.title}</p>
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                          {course.lessons?.[0]?.count ?? 0} lessons ·{" "}
-                          {course.enrollments?.[0]?.count ?? 0} students
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0 ml-4">
-                        <Badge variant={course.is_published ? "default" : "secondary"}>
-                          {course.is_published ? (
-                            <><Eye className="mr-1 h-3 w-3" />Published</>
-                          ) : (
-                            <><EyeOff className="mr-1 h-3 w-3" />Draft</>
-                          )}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
+      {/* ── Stats strip ── */}
+      {tab === "overview" && (
+        <div className="border-b border-border/60">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-3 divide-x divide-border/60">
+              {[
+                { label: "Total Courses",   value: totalCourses,        sub: `${publishedCourses} published` },
+                { label: "Students",         value: totalStudents,        sub: "across all courses" },
+                { label: "Avg Completion",   value: `${avgCompletionRate}%`, sub: "enrolled students" },
+              ].map(({ label, value, sub }) => (
+                <div key={label} className="py-7 px-6 lg:px-8">
+                  <p className="font-mono text-4xl sm:text-5xl font-black tabular-nums tracking-tighter text-foreground leading-none">
+                    {value}
+                  </p>
+                  <p className="mt-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground/60 font-mono">{sub}</p>
+                </div>
               ))}
             </div>
-          ) : (
-            <div className="flex flex-col items-center py-16 text-center">
-              <BookOpen className="h-12 w-12 text-muted-foreground/30 mb-4" />
-              <p className="font-medium">No courses yet</p>
-              <p className="text-sm text-muted-foreground mt-1">Create your first course to get started</p>
-              <Button className="mt-6" asChild>
-                <Link href="/instructor/courses/new">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Create course
-                </Link>
-              </Button>
-            </div>
-          )}
-        </>
+          </div>
+        </div>
       )}
 
-      {/* ── Analytics ── */}
-      {tab === "analytics" && <AnalyticsPanel instructorId={instructorId} />}
-    </main>
+      {/* ── Page body ── */}
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+
+        {/* OVERVIEW */}
+        {tab === "overview" && (
+          <>
+            {courses.length > 0 ? (
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground mb-4">
+                  Your Courses
+                </p>
+
+                <div className="rounded-lg border border-border/60 overflow-hidden">
+                  {courses.map((course, i) => {
+                    const lessonCount = course.lessons?.[0]?.count ?? 0;
+                    const studentCount = course.enrollments?.[0]?.count ?? 0;
+
+                    return (
+                      <Link key={course.id} href={`/instructor/courses/${course.id}`}>
+                        <div className={`group flex items-center gap-4 px-5 py-4 border-b border-border/40 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer ${i % 2 === 1 ? "bg-muted/[0.04]" : ""}`}>
+
+                          {/* Status indicator */}
+                          <span className={`h-1.5 w-1.5 rounded-full shrink-0 transition-colors ${course.is_published ? "bg-emerald-400" : "bg-muted-foreground/30"}`} />
+
+                          {/* Thumbnail */}
+                          <div className="h-12 w-20 rounded bg-muted border border-border/40 overflow-hidden shrink-0 hidden sm:block">
+                            {course.thumbnail_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={course.thumbnail_url} alt={course.title} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <BookOpen className="h-4 w-4 text-muted-foreground/30" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold truncate group-hover:text-brand transition-colors">
+                              {course.title}
+                            </p>
+                            <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
+                              {lessonCount} lessons · {studentCount} students
+                            </p>
+                          </div>
+
+                          {/* Status + arrow */}
+                          <div className="flex items-center gap-4 shrink-0">
+                            <span className={`font-mono text-[10px] font-black uppercase tracking-wide hidden sm:inline ${course.is_published ? "text-emerald-500" : "text-muted-foreground/50"}`}>
+                              {course.is_published ? "live" : "draft"}
+                            </span>
+                            <ArrowUpRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-brand group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              /* Empty state */
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="font-mono text-7xl font-black text-muted-foreground/10 select-none leading-none mb-6">
+                  [ ]
+                </div>
+                <p className="text-lg font-bold tracking-tight">No courses yet</p>
+                <p className="text-sm text-muted-foreground mt-1.5 font-mono">
+                  Create your first course to get started.
+                </p>
+                <Button asChild className="mt-6 rounded-lg h-8 text-xs font-mono gap-1.5 bg-brand text-brand-foreground hover:bg-brand/90">
+                  <Link href="/instructor/courses/new">
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    create course
+                  </Link>
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ANALYTICS */}
+        {tab === "analytics" && <AnalyticsPanel instructorId={instructorId} />}
+      </main>
+    </div>
   );
 }

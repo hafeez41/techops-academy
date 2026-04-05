@@ -22,8 +22,9 @@ export default async function CourseOGImage({
     course?.description
       ? course.description.slice(0, 120) + (course.description.length > 120 ? "…" : "")
       : "Learn in-demand tech skills from expert instructors.";
-  const instructor =
-    (course?.profiles as { full_name: string | null } | null)?.full_name ?? null;
+  const profilesRaw = course?.profiles;
+  const profileObj = Array.isArray(profilesRaw) ? (profilesRaw[0] ?? null) : (profilesRaw ?? null);
+  const instructor = (profileObj as { full_name: string | null } | null)?.full_name ?? null;
 
   return new ImageResponse(
     (

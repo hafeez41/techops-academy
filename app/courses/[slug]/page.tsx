@@ -4,10 +4,6 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { Navbar } from "@/components/shared/navbar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Lock,
   Play,
@@ -24,27 +20,17 @@ import {
 import { EnrollButton } from "@/components/shared/enroll-button";
 import { ReviewForm } from "@/components/shared/review-form";
 import type { Lesson } from "@/types";
+import { formatDuration, formatLessonDuration, initials } from "@/lib/utils";
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const { slug } = params;
   const supabase = createClient();
   const { data } = await supabase
     .from("courses")
     .select("title, description")
-    .eq("slug", params.slug)
+    .eq("slug", slug)
     .single();
   return { title: data?.title ?? "Course" };
-}
-
-function formatDuration(seconds: number) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
-function formatLessonDuration(seconds: number) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 export default async function CourseDetailPage({
@@ -52,6 +38,7 @@ export default async function CourseDetailPage({
 }: {
   params: { slug: string };
 }) {
+  const { slug } = params;
   const supabase = createClient();
   const {
     data: { user },
@@ -61,7 +48,7 @@ export default async function CourseDetailPage({
     supabase
       .from("courses")
       .select(`*, profiles(*), lessons(*), reviews(*, profiles(*))`)
-      .eq("slug", params.slug)
+      .eq("slug", slug)
       .eq("is_published", true)
       .single(),
     user
@@ -71,20 +58,26 @@ export default async function CourseDetailPage({
 
   if (!course) notFound();
 
-  const { data: sectionsRaw } = await supabase
-    .from("course_sections")
-    .select("id, title, position")
-    .eq("course_id", course.id)
-    .order("position");
+  // Fetch sections + prerequisites in parallel — both depend only on course.id
+  const [{ data: sectionsRaw }, { data: prereqRows }] = await Promise.all([
+    supabase
+      .from("course_sections")
+      .select("id, title, position")
+      .eq("course_id", course.id)
+      .order("position"),
+    supabase
+      .from("course_prerequisites")
+      .select("prerequisite_id, courses!course_prerequisites_prerequisite_id_fkey(id, title, slug)")
+      .eq("course_id", course.id),
+  ]);
   const sections = sectionsRaw ?? [];
-
-  // Fetch prerequisites
-  const { data: prereqRows } = await supabase
-    .from("course_prerequisites")
-    .select("prerequisite_id, courses!course_prerequisites_prerequisite_id_fkey(id, title, slug)")
-    .eq("course_id", course.id);
   const prerequisites: { id: string; title: string; slug: string }[] =
-    (prereqRows ?? []).map((r: { prerequisite_id: string; courses: { id: string; title: string; slug: string } | null }) => r.courses).filter(Boolean) as { id: string; title: string; slug: string }[];
+    (prereqRows ?? []).flatMap((r: { prerequisite_id: string; courses: { id: string; title: string; slug: string } | { id: string; title: string; slug: string }[] | null }) => {
+      const c = r.courses;
+      if (!c) return [];
+      if (Array.isArray(c)) return c;
+      return [c];
+    });
 
   // Check which prerequisites the user has completed
   let completedPrereqIds = new Set<string>();
@@ -144,107 +137,100 @@ export default async function CourseDetailPage({
       : null;
 
   const instructorName = course.profiles?.full_name ?? "Instructor";
-  const instructorInitials = instructorName
-    .split(" ")
-    .map((n: string) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  const instructorInitials = initials(instructorName);
 
   const firstLesson = lessons[0];
 
   const ctaCard = (
-    <Card className="shadow-2xl shadow-black/10 overflow-hidden border-border/60">
-      <CardContent className="p-0">
-        {course.thumbnail_url ? (
-          <div className="relative aspect-video w-full overflow-hidden bg-muted">
-            <Image
-              src={course.thumbnail_url}
-              alt={course.title}
-              fill
-              className="object-cover"
-            />
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-              <div className="rounded-full bg-white/95 p-4 shadow-xl ring-4 ring-white/20 transition-transform hover:scale-105">
-                <Play className="h-6 w-6 fill-zinc-950 text-zinc-950" />
-              </div>
+    <div className="rounded-2xl border border-white/10 bg-[hsl(224,20%,8%)] shadow-2xl shadow-black/40 overflow-hidden">
+      {course.thumbnail_url ? (
+        <div className="relative aspect-video w-full overflow-hidden bg-zinc-900">
+          <Image
+            src={course.thumbnail_url}
+            alt={course.title}
+            fill
+            className="object-cover"
+          />
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+            <div className="rounded-full bg-white/95 p-4 shadow-xl ring-4 ring-white/20 transition-transform hover:scale-105">
+              <Play className="h-6 w-6 fill-zinc-950 text-zinc-950" />
             </div>
-          </div>
-        ) : null}
-        <div className="p-6 space-y-4">
-          <div className={`text-3xl font-extrabold tracking-tight ${course.price === 0 ? "text-brand" : "text-foreground"}`}>
-            {course.price === 0 ? "Free" : `$${course.price}`}
-          </div>
-
-          {/* Prerequisites */}
-          {prerequisites.length > 0 && !isEnrolled && (
-            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                <AlertCircle className="h-3.5 w-3.5" />
-                Prerequisites required
-              </p>
-              <ul className="space-y-1.5">
-                {prerequisites.map((p) => {
-                  const done = completedPrereqIds.has(p.id);
-                  return (
-                    <li key={p.id} className="flex items-center gap-2 text-sm">
-                      {done ? (
-                        <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                      ) : (
-                        <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      )}
-                      <Link
-                        href={`/courses/${p.slug}`}
-                        className="hover:text-brand hover:underline underline-offset-2 transition-colors truncate"
-                      >
-                        {p.title}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-
-          {isEnrolled ? (
-            <Button className="w-full h-11 text-base bg-brand text-brand-foreground hover:bg-brand/90 font-semibold shadow-md shadow-brand/20" asChild>
-              <Link href={firstLesson ? `/learn/${course.id}/${firstLesson.id}` : "#"}>
-                <Play className="mr-2 h-4 w-4" />
-                Continue Learning
-              </Link>
-            </Button>
-          ) : (
-            <EnrollButton courseId={course.id} userId={user?.id ?? null} price={course.price ?? 0} firstLessonId={firstLesson?.id ?? null} />
-          )}
-
-          <Separator />
-
-          <div>
-            <p className="text-sm font-semibold mb-3">This course includes:</p>
-            <ul className="space-y-2.5 text-sm text-muted-foreground">
-              {durationLabel && (
-                <li className="flex items-center gap-2.5">
-                  <Clock className="h-4 w-4 shrink-0 text-foreground" />
-                  {durationLabel} of on-demand video
-                </li>
-              )}
-              <li className="flex items-center gap-2.5">
-                <BookOpen className="h-4 w-4 shrink-0 text-foreground" />
-                {lessons.length} lessons
-              </li>
-              <li className="flex items-center gap-2.5">
-                <Infinity className="h-4 w-4 shrink-0 text-foreground" />
-                Full lifetime access
-              </li>
-              <li className="flex items-center gap-2.5">
-                <Award className="h-4 w-4 shrink-0 text-foreground" />
-                Certificate of completion
-              </li>
-            </ul>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      ) : null}
+      <div className="p-6 space-y-4">
+        <div className={`text-4xl font-black tracking-tight ${course.price === 0 ? "text-amber-400" : "text-white"}`}>
+          {course.price === 0 ? "Free" : `$${course.price}`}
+        </div>
+
+        {/* Prerequisites */}
+        {prerequisites.length > 0 && !isEnrolled && (
+          <div className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-2">
+            <p className="text-xs font-semibold text-white/50 uppercase tracking-wide flex items-center gap-1.5">
+              <AlertCircle className="h-3.5 w-3.5" />
+              Prerequisites required
+            </p>
+            <ul className="space-y-1.5">
+              {prerequisites.map((p) => {
+                const done = completedPrereqIds.has(p.id);
+                return (
+                  <li key={p.id} className="flex items-center gap-2 text-sm">
+                    {done ? (
+                      <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                    ) : (
+                      <Lock className="h-3.5 w-3.5 text-white/30 shrink-0" />
+                    )}
+                    <Link
+                      href={`/courses/${p.slug}`}
+                      className="text-white/60 hover:text-white hover:underline underline-offset-2 transition-colors truncate"
+                    >
+                      {p.title}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
+        {isEnrolled ? (
+          <Button className="h-12 text-base font-black rounded-xl bg-brand text-brand-foreground hover:bg-brand/90 shadow-md shadow-brand/20 w-full" asChild>
+            <Link href={firstLesson ? `/learn/${course.id}/${firstLesson.id}` : "#"}>
+              <Play className="mr-2 h-4 w-4" />
+              Continue Learning
+            </Link>
+          </Button>
+        ) : (
+          <EnrollButton courseId={course.id} userId={user?.id ?? null} price={course.price ?? 0} firstLessonId={firstLesson?.id ?? null} />
+        )}
+
+        <div className="h-px bg-white/10" />
+
+        <div>
+          <p className="text-sm font-semibold mb-3 text-white/70">This course includes:</p>
+          <ul className="space-y-2.5 text-sm text-white/50">
+            {durationLabel && (
+              <li className="flex items-center gap-2.5">
+                <Clock className="h-4 w-4 shrink-0" style={{ color: "#f59e0b" }} />
+                {durationLabel} of on-demand video
+              </li>
+            )}
+            <li className="flex items-center gap-2.5">
+              <BookOpen className="h-4 w-4 shrink-0" style={{ color: "#f59e0b" }} />
+              {lessons.length} lessons
+            </li>
+            <li className="flex items-center gap-2.5">
+              <Infinity className="h-4 w-4 shrink-0" style={{ color: "#f59e0b" }} />
+              Full lifetime access
+            </li>
+            <li className="flex items-center gap-2.5">
+              <Award className="h-4 w-4 shrink-0" style={{ color: "#f59e0b" }} />
+              Certificate of completion
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
   );
 
   return (
@@ -253,7 +239,11 @@ export default async function CourseDetailPage({
 
       {/* Dark hero */}
       <div className="relative overflow-hidden bg-zinc-900 text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,hsl(var(--brand)/0.15),transparent_60%)]" />
+        {/* Radial brand glow */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,hsl(var(--brand)/0.12),transparent_60%)]" />
+        {/* Subtle grid */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:64px_64px] opacity-[0.08]" />
+
         <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-3 gap-8 items-start">
             {/* Left: course info */}
@@ -261,18 +251,17 @@ export default async function CourseDetailPage({
               {course.categories?.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {course.categories.map((cat: string) => (
-                    <Badge
+                    <span
                       key={cat}
-                      variant="outline"
-                      className="border-zinc-600 text-zinc-300 hover:border-zinc-400 hover:text-white"
+                      className="font-mono text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded border border-white/15 text-white/60 bg-white/5"
                     >
                       {cat}
-                    </Badge>
+                    </span>
                   ))}
                 </div>
               )}
 
-              <h1 className="text-3xl font-bold tracking-tight leading-tight">
+              <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tighter leading-tight">
                 {course.title}
               </h1>
 
@@ -326,23 +315,18 @@ export default async function CourseDetailPage({
 
               {/* Instructor */}
               <div className="flex items-center gap-2.5 pt-1">
-                <Avatar className="h-7 w-7 border border-zinc-600">
-                  <AvatarImage src={course.profiles?.avatar_url ?? ""} />
-                  <AvatarFallback className="text-xs bg-zinc-700 text-zinc-200">
-                    {instructorInitials}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-sm text-zinc-300">
-                  Created by{" "}
-                  <span className="text-brand font-medium underline underline-offset-2">
-                    {instructorName}
-                  </span>
+                <div className="h-7 w-7 shrink-0 rounded bg-brand/20 border border-brand/30 flex items-center justify-center font-mono text-[9px] font-black text-brand">
+                  {instructorInitials}
+                </div>
+                <span className="text-sm text-zinc-400">
+                  by{" "}
+                  <span className="text-brand font-medium">{instructorName}</span>
                 </span>
               </div>
             </div>
 
-            {/* Right: CTA card (desktop only) */}
-            <div className="hidden lg:block">
+            {/* Right: CTA card (desktop only) — sticky */}
+            <div className="hidden lg:block lg:sticky lg:top-6">
               {ctaCard}
             </div>
           </div>
@@ -359,19 +343,16 @@ export default async function CourseDetailPage({
 
             {/* Curriculum */}
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10">
-                    <BookOpen className="h-4 w-4 text-brand" />
-                  </div>
-                  <h2 className="text-xl font-bold">Course Content</h2>
-                </div>
-                <span className="text-sm text-muted-foreground">
+              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border/40">
+                <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                  course.content
+                </span>
+                <span className="font-mono text-[9px] text-muted-foreground/25 ml-auto tabular-nums">
                   {lessons.length} lesson{lessons.length !== 1 ? "s" : ""}
                   {durationLabel ? ` · ${durationLabel}` : ""}
                 </span>
               </div>
-              <div className="rounded-xl border border-border overflow-hidden divide-y divide-border/60 shadow-sm">
+              <div className="border border-border/40 rounded-lg overflow-hidden">
                 {(() => {
                   // Group lessons by section
                   const groups: { title: string | null; lessons: typeof lessons }[] = [];
@@ -390,9 +371,11 @@ export default async function CourseDetailPage({
                   return groups.map((group, gi) => (
                     <div key={gi}>
                       {group.title && (
-                        <div className="px-4 py-3 bg-muted/50 border-b border-border/60 flex items-center gap-2">
-                          <Layers className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{group.title}</p>
+                        <div className="flex items-center gap-3 px-4 py-2.5 bg-muted/20 border-b border-border/30">
+                          <Layers className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+                          <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                            {group.title}
+                          </p>
                         </div>
                       )}
                       {group.lessons.map((lesson) => {
@@ -401,35 +384,37 @@ export default async function CourseDetailPage({
                         return (
                           <div
                             key={lesson.id}
-                            className="flex items-center gap-3 px-4 py-3.5 text-sm hover:bg-muted/30 transition-colors group/lesson"
+                            className="flex items-center gap-3 py-3 px-4 hover:bg-muted/30 transition-colors border-b border-border/20 last:border-0"
                           >
-                            <span className="shrink-0 w-5 text-center text-xs text-muted-foreground/60 tabular-nums font-medium">
-                              {idx + 1}
+                            <span className="font-mono text-[10px] font-bold text-muted-foreground/30 w-5 text-right shrink-0 tabular-nums">
+                              {String(idx + 1).padStart(2, "0")}
                             </span>
                             {canAccess ? (
                               <Link
                                 href={`/learn/${course.id}/${lesson.id}`}
-                                className="flex flex-1 items-center gap-3 min-w-0 group-hover/lesson:text-brand transition-colors"
+                                className="group/row flex flex-1 items-center gap-2.5 min-w-0"
                               >
-                                <span className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-brand/10 group-hover/lesson:bg-brand/20 transition-colors">
-                                  <Play className="h-3 w-3 text-brand" />
+                                <Play className="h-3 w-3 shrink-0 text-muted-foreground/30 group-hover/row:text-brand transition-colors" />
+                                <span className="flex-1 truncate text-sm text-foreground/80 group-hover/row:text-brand transition-colors">
+                                  {lesson.title}
                                 </span>
-                                <span className="flex-1 truncate font-medium">{lesson.title}</span>
                               </Link>
                             ) : (
-                              <>
-                                <span className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-muted">
-                                  <Lock className="h-3 w-3 text-muted-foreground" />
+                              <div className="flex flex-1 items-center gap-2.5 min-w-0">
+                                <Lock className="h-3 w-3 shrink-0 text-muted-foreground/20" />
+                                <span className="flex-1 truncate text-sm text-muted-foreground/40">
+                                  {lesson.title}
                                 </span>
-                                <span className="flex-1 truncate text-muted-foreground">{lesson.title}</span>
-                              </>
+                              </div>
                             )}
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-2.5 shrink-0 ml-auto">
                               {lesson.is_free_preview && !isEnrolled && (
-                                <Badge className="text-xs bg-brand/10 text-brand border-brand/30 hover:bg-brand/15 py-0 px-2">Preview</Badge>
+                                <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-brand/70 border border-brand/20 px-1.5 py-0.5 rounded">
+                                  preview
+                                </span>
                               )}
                               {lesson.duration_seconds ? (
-                                <span className="text-xs text-muted-foreground tabular-nums bg-muted/60 px-1.5 py-0.5 rounded">
+                                <span className="font-mono text-[10px] tabular-nums text-muted-foreground/40">
                                   {formatLessonDuration(lesson.duration_seconds)}
                                 </span>
                               ) : null}
@@ -444,41 +429,31 @@ export default async function CourseDetailPage({
             </div>
 
             {/* Instructor section */}
-            <div className="rounded-xl border border-border/60 bg-card p-5">
-              <h2 className="text-base font-bold mb-4 text-muted-foreground uppercase tracking-wide text-xs">Your Instructor</h2>
+            <div className="border-t border-border/40 pt-8">
+              <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-5">instructor</p>
               <div className="flex items-start gap-4">
-                <Avatar className="h-14 w-14 shrink-0 ring-2 ring-border">
-                  <AvatarImage src={course.profiles?.avatar_url ?? ""} />
-                  <AvatarFallback className="text-lg bg-brand/15 text-brand font-bold">
-                    {instructorInitials}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="h-12 w-12 shrink-0 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center font-mono text-sm font-black text-brand">
+                  {instructorInitials}
+                </div>
                 <div>
                   <p className="font-bold text-base leading-tight">{instructorName}</p>
-                  <p className="text-sm text-brand mt-0.5 font-medium">Course Instructor</p>
-                  <div className="flex flex-wrap gap-4 mt-3 text-sm text-muted-foreground">
+                  <p className="font-mono text-[10px] text-brand/70 mt-0.5 uppercase tracking-widest">Course Instructor</p>
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 font-mono text-[11px] text-muted-foreground/60">
                     {avgRating && (
-                      <div className="flex items-center gap-1.5">
-                        <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                        <span>{avgRating.toFixed(1)} rating</span>
-                      </div>
+                      <span className="flex items-center gap-1 tabular-nums">
+                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                        {avgRating.toFixed(1)} avg
+                      </span>
                     )}
-                    <div className="flex items-center gap-1.5">
-                      <Users className="h-3.5 w-3.5" />
-                      <span>{(enrollmentCount ?? 0).toLocaleString()} students</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <BookOpen className="h-3.5 w-3.5" />
-                      <span>1 course</span>
-                    </div>
+                    <span className="tabular-nums">{(enrollmentCount ?? 0).toLocaleString()} students</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Review form — enrolled users who haven't reviewed yet (or want to update) */}
+            {/* Review form */}
             {isEnrolled && user && (
-              <div className="rounded-lg border border-border p-5">
+              <div className="border-t border-border/40 pt-8">
                 <ReviewForm
                   courseId={course.id}
                   existingReview={
@@ -495,78 +470,50 @@ export default async function CourseDetailPage({
 
             {/* Reviews */}
             {course.reviews?.length > 0 && (
-              <div>
+              <div className="border-t border-border/40 pt-8">
                 <div className="flex items-center gap-3 mb-5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-400/10">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  </div>
-                  <h2 className="text-xl font-bold">Student Reviews</h2>
+                  <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                    reviews
+                  </span>
                   {avgRating && (
-                    <div className="flex items-center gap-1.5 ml-1">
-                      <span className="font-bold text-yellow-500">{avgRating.toFixed(1)}</span>
-                      <div className="flex">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-3.5 w-3.5 ${
-                              i < Math.round(avgRating)
-                                ? "fill-yellow-400 text-yellow-400"
-                                : "text-muted-foreground/30"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <span className="text-sm text-muted-foreground">
-                        ({course.reviews.length})
-                      </span>
+                    <div className="flex items-center gap-1.5">
+                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                      <span className="font-mono text-[11px] font-bold text-yellow-500 tabular-nums">{avgRating.toFixed(1)}</span>
+                      <span className="font-mono text-[9px] text-muted-foreground/40 tabular-nums">[{course.reviews.length}]</span>
                     </div>
                   )}
                 </div>
-                <div className="space-y-3">
+                <div>
                   {course.reviews
                     .slice(0, 5)
-                    .map(
-                      (review: {
-                        id: string;
-                        rating: number;
-                        body: string | null;
-                        created_at: string;
-                        profiles: { full_name: string | null; avatar_url: string | null };
-                      }) => (
-                        <div key={review.id} className="rounded-xl border border-border/60 bg-card p-4 flex gap-3.5">
-                          <Avatar className="h-9 w-9 shrink-0 mt-0.5">
-                            <AvatarImage src={review.profiles?.avatar_url ?? ""} />
-                            <AvatarFallback className="text-xs bg-brand/10 text-brand font-semibold">
-                              {review.profiles?.full_name?.charAt(0) ?? "U"}
-                            </AvatarFallback>
-                          </Avatar>
+                    .map((review: {
+                      id: string; rating: number; body: string | null;
+                      created_at: string;
+                      profiles: { full_name: string | null; avatar_url: string | null };
+                    }) => {
+                      const rname = review.profiles?.full_name ?? "Student";
+                      const rini = rname.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
+                      return (
+                        <div key={review.id} className="flex gap-3 py-4 border-b border-border/30 last:border-0">
+                          <div className="h-6 w-6 shrink-0 mt-0.5 rounded bg-brand/10 border border-brand/20 flex items-center justify-center font-mono text-[8px] font-black text-brand">
+                            {rini}
+                          </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1.5">
-                              <span className="text-sm font-semibold">
-                                {review.profiles?.full_name}
-                              </span>
+                              <span className="font-mono text-[11px] font-bold text-foreground/80">{rname}</span>
                               <div className="flex gap-px">
                                 {Array.from({ length: 5 }).map((_, i) => (
-                                  <Star
-                                    key={i}
-                                    className={`h-3 w-3 ${
-                                      i < review.rating
-                                        ? "fill-yellow-400 text-yellow-400"
-                                        : "text-muted-foreground/30"
-                                    }`}
-                                  />
+                                  <Star key={i} className={`h-2.5 w-2.5 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/20"}`} />
                                 ))}
                               </div>
                             </div>
                             {review.body && (
-                              <p className="text-sm text-muted-foreground leading-relaxed">
-                                {review.body}
-                              </p>
+                              <p className="text-sm text-muted-foreground/80 leading-relaxed">{review.body}</p>
                             )}
                           </div>
                         </div>
-                      )
-                    )}
+                      );
+                    })}
                 </div>
               </div>
             )}

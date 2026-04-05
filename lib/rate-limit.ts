@@ -32,7 +32,7 @@ export function rateLimit(
 
   // Purge expired entries occasionally to avoid memory leaks
   if (Math.random() < 0.01) {
-    for (const [k, w] of store.entries()) {
+    for (const [k, w] of Array.from(store.entries())) {
       if (w.reset < now) store.delete(k);
     }
   }

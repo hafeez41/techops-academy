@@ -57,7 +57,7 @@ export function StudentsTab({ courseId, lessons, progressionMode }: StudentsTabP
 
     const { data: enrollments } = await supabase
       .from("enrollments")
-      .select("student_id, enrolled_at, enrolled_by, profiles(id, full_name)")
+      .select("student_id, enrolled_at, enrolled_by, profiles(id, full_name, email)")
       .eq("course_id", courseId);
 
     if (!enrollments?.length) {
@@ -100,8 +100,8 @@ export function StudentsTab({ courseId, lessons, progressionMode }: StudentsTabP
 
     const mapped: Student[] = enrollments.map((e) => ({
       id: e.student_id,
-      full_name: (e.profiles as unknown as { full_name: string | null } | null)?.full_name ?? null,
-      email: e.student_id, // placeholder — shown as ID if email unavailable
+      full_name: (e.profiles as unknown as { full_name: string | null; email: string | null } | null)?.full_name ?? null,
+      email: (e.profiles as unknown as { full_name: string | null; email: string | null } | null)?.email ?? e.student_id,
       enrolled_at: e.enrolled_at,
       enrolled_by: e.enrolled_by,
       completedCount: progressCount[e.student_id] ?? 0,
@@ -272,6 +272,9 @@ export function StudentsTab({ courseId, lessons, progressionMode }: StudentsTabP
                       <p className="text-sm font-medium truncate">
                         {student.full_name ?? "Unnamed student"}
                       </p>
+                      {student.email && !student.email.includes("-") && (
+                        <p className="font-mono text-[10px] text-muted-foreground/60 truncate">{student.email}</p>
+                      )}
                       <div className="flex items-center gap-3 mt-0.5">
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <CheckCircle className="h-3 w-3" />

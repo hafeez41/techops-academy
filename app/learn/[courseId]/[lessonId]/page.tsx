@@ -8,7 +8,6 @@ import {
   Circle,
   ChevronLeft,
   ExternalLink,
-  Unlock,
 } from "lucide-react";
 import { VideoPlayer } from "@/components/shared/video-player";
 import { LessonTabs } from "@/components/shared/lesson-tabs";
@@ -18,16 +17,11 @@ import { LessonNotes } from "@/components/shared/lesson-notes";
 import { LessonComments } from "@/components/shared/lesson-comments";
 import { QuizPlayer } from "@/components/shared/quiz-player";
 import type { Lesson } from "@/types";
+import { formatLessonDuration } from "@/lib/utils";
 
 interface LessonFile { id: string; name: string; url: string; size?: number | null }
 
 export const metadata = { title: "Learn" };
-
-function formatDuration(seconds: number) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
 
 export default async function LearnPage({
   params,
@@ -133,13 +127,52 @@ export default async function LearnPage({
   // Sidebar lesson list
   const lessonList = (
     <nav className="flex-1 py-2">
-      {sidebarGroups.map((group, gi) => (
+      {sidebarGroups.map((group, gi) => {
+        const sectionTotal = group.lessons.length;
+        const sectionDone = isEnrolled
+          ? group.lessons.filter((l) => completedIds.has(l.id)).length
+          : 0;
+        const sectionPct = sectionTotal > 0 ? Math.round((sectionDone / sectionTotal) * 100) : 0;
+        const sectionComplete = sectionDone === sectionTotal && sectionTotal > 0;
+
+        return (
         <div key={gi}>
           {group.title && (
-            <div className="px-4 pt-5 pb-2 flex items-center gap-2">
-              <div className="h-px flex-1 bg-border/60" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 shrink-0">{group.title}</p>
-              <div className="h-px flex-1 bg-border/60" />
+            <div className="px-4 pt-5 pb-3 space-y-2">
+              {/* Section title row */}
+              <div className="flex items-center justify-between gap-2">
+                <p
+                  className="text-[9px] font-black uppercase tracking-widest truncate"
+                  style={{ color: "rgba(255,255,255,0.30)" }}
+                >
+                  {group.title}
+                </p>
+                {isEnrolled && (
+                  <span
+                    className="font-mono text-[9px] tabular-nums shrink-0"
+                    style={{ color: sectionComplete ? "rgba(16,185,129,0.7)" : "rgba(255,255,255,0.20)" }}
+                  >
+                    {sectionDone}/{sectionTotal}
+                  </span>
+                )}
+              </div>
+              {/* Per-section progress bar */}
+              {isEnrolled && (
+                <div
+                  className="h-px w-full overflow-hidden"
+                  style={{ backgroundColor: "rgba(255,255,255,0.07)" }}
+                >
+                  <div
+                    className="h-full transition-all duration-500"
+                    style={{
+                      width: `${sectionPct}%`,
+                      backgroundColor: sectionComplete
+                        ? "#10b981"
+                        : "hsl(38,85%,50%)",
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
           {group.lessons.map((lesson) => {
@@ -152,58 +185,68 @@ export default async function LearnPage({
                 key={lesson.id}
                 href={locked ? "#" : `/learn/${courseId}/${lesson.id}`}
                 aria-disabled={locked}
-                className={`flex items-start gap-3 px-4 py-3 text-sm transition-colors ${
+                className={`flex items-start gap-3 px-4 py-2.5 text-sm transition-colors border-l-2 ${
                   active
-                    ? "border-l-2 border-brand bg-brand/8 text-foreground"
+                    ? "border-brand"
                     : locked
-                    ? "border-l-2 border-transparent text-muted-foreground/50 cursor-not-allowed"
-                    : "border-l-2 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "border-transparent cursor-not-allowed"
+                    : "border-transparent"
                 }`}
+                style={{
+                  backgroundColor: active ? "rgba(245,158,11,0.08)" : undefined,
+                  color: active
+                    ? "rgba(255,255,255,0.92)"
+                    : locked
+                    ? "rgba(255,255,255,0.2)"
+                    : "rgba(255,255,255,0.5)",
+                }}
               >
                 <span className="mt-0.5 shrink-0">
                   {locked ? (
-                    <Lock className="h-4 w-4 text-muted-foreground/40" />
+                    <Lock className="h-3.5 w-3.5" style={{ color: "rgba(255,255,255,0.18)" }} />
                   ) : done ? (
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <CheckCircle className="h-3.5 w-3.5 text-green-500" />
                   ) : active ? (
                     <div className="h-2 w-2 rounded-full bg-brand mt-1 shrink-0" />
                   ) : (
-                    <Circle className="h-4 w-4 text-muted-foreground/40" />
+                    <Circle className="h-3.5 w-3.5" style={{ color: "rgba(255,255,255,0.2)" }} />
                   )}
                 </span>
-                <span className="flex-1 leading-snug line-clamp-2">{lesson.title}</span>
+                <span className="flex-1 leading-snug line-clamp-2 text-xs">{lesson.title}</span>
                 {lesson.duration_seconds ? (
-                  <span className="shrink-0 text-xs text-muted-foreground tabular-nums mt-0.5">
-                    {formatDuration(lesson.duration_seconds)}
+                  <span className="shrink-0 text-[10px] tabular-nums mt-0.5" style={{ color: "rgba(255,255,255,0.25)" }}>
+                    {formatLessonDuration(lesson.duration_seconds)}
                   </span>
                 ) : null}
               </Link>
             );
           })}
         </div>
-      ))}
+        );
+      })}
     </nav>
   );
 
   const sidebarHeader = (
-    <div className="p-4 border-b border-border">
+    <div className="p-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
       <Link
         href="/courses"
-        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3"
+        className="flex items-center gap-1 text-xs transition-opacity hover:opacity-100 mb-3"
+        style={{ color: "rgba(255,255,255,0.35)", opacity: 0.7 }}
       >
         <ChevronLeft className="h-3 w-3" />
         All courses
       </Link>
-      <h2 className="font-semibold text-sm text-foreground leading-snug">{course.title}</h2>
+      <h2 className="font-bold text-sm leading-snug" style={{ color: "rgba(255,255,255,0.9)" }}>{course.title}</h2>
       {isEnrolled && (
         <div className="mt-3">
-          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+          <div className="flex items-center justify-between text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>
             <span>{completedCount}/{lessons.length} completed</span>
             <span>{progressPct}%</span>
           </div>
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
+          <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
             <div
-              className="h-full rounded-full bg-brand transition-all duration-500 shadow-[0_0_6px_hsl(var(--brand)/0.4)]"
+              className="h-full rounded-full bg-brand transition-all duration-500"
               style={{ width: `${progressPct}%` }}
             />
           </div>
@@ -217,7 +260,10 @@ export default async function LearnPage({
       <Navbar />
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop sidebar */}
-        <aside className="hidden w-72 shrink-0 overflow-y-auto border-r border-border bg-card lg:flex flex-col">
+        <aside
+          className="hidden w-72 shrink-0 overflow-y-auto lg:flex flex-col"
+          style={{ backgroundColor: "hsl(224,22%,6%)", borderRight: "1px solid rgba(255,255,255,0.07)" }}
+        >
           {sidebarHeader}
           {lessonList}
         </aside>
@@ -225,24 +271,24 @@ export default async function LearnPage({
         {/* Main area */}
         <main className="flex-1 overflow-y-auto bg-background">
           {/* Mobile top bar */}
-          <div className="flex items-center gap-3 border-b border-border px-4 py-2.5 lg:hidden">
+          <div className="flex items-center gap-3 border-b border-border/60 px-4 py-2.5 lg:hidden" style={{ backgroundColor: "hsl(224,22%,6%)" }}>
             <MobileSidebar
               courseTitle={course.title}
               sidebarHeader={sidebarHeader}
               lessonList={lessonList}
             />
-            <span className="text-sm font-medium truncate">{currentLesson.title}</span>
+            <span className="text-xs font-mono truncate" style={{ color: "rgba(255,255,255,0.6)" }}>{currentLesson.title}</span>
           </div>
 
           {/* Instructor-gated lock state */}
           {isLockedByInstructor ? (
-            <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
-              <div className="rounded-full bg-muted p-5 mb-5">
-                <Lock className="h-8 w-8 text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center py-32 px-4 text-center">
+              <div className="h-20 w-20 rounded-2xl border border-border/60 bg-muted/30 flex items-center justify-center mb-6">
+                <Lock className="h-8 w-8 text-muted-foreground/50" />
               </div>
-              <h2 className="text-lg font-semibold mb-2">Lesson not yet unlocked</h2>
-              <p className="text-sm text-muted-foreground max-w-sm">
-                Your instructor hasn&apos;t unlocked this lesson for you yet. Check back later or reach out to them directly.
+              <h2 className="text-xl font-black tracking-tight mb-2">Not yet unlocked</h2>
+              <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
+                Your instructor hasn&apos;t unlocked this lesson yet. Check back later or reach out to them directly.
               </p>
             </div>
           ) : (
@@ -251,23 +297,17 @@ export default async function LearnPage({
               {(currentLesson.lesson_type === "video" || currentLesson.lesson_type === "mixed") && (
                 <div className="bg-black">
                   <div className="max-w-5xl mx-auto">
-                    {currentLesson.mux_playback_id ? (
-                      <VideoPlayer
-                        playbackId={currentLesson.mux_playback_id}
-                        lessonId={currentLesson.id}
-                        courseId={courseId}
-                        isCompleted={isCompleted}
-                        isEnrolled={isEnrolled}
-                        nextLessonId={nextLesson?.id ?? null}
-                        nextCourseId={nextLesson ? courseId : null}
-                        isLastLesson={isLastLesson}
-                      />
-                    ) : (
-                      <div className="aspect-video flex items-center justify-center gap-3 text-zinc-500">
-                        <Lock className="h-6 w-6" />
-                        <span className="text-sm">Video not yet available</span>
-                      </div>
-                    )}
+                    <VideoPlayer
+                      playbackId={currentLesson.mux_playback_id}
+                      youtubeUrl={currentLesson.external_url}
+                      lessonId={currentLesson.id}
+                      courseId={courseId}
+                      isCompleted={isCompleted}
+                      isEnrolled={isEnrolled}
+                      nextLessonId={nextLesson?.id ?? null}
+                      nextCourseId={nextLesson ? courseId : null}
+                      isLastLesson={isLastLesson}
+                    />
                   </div>
                 </div>
               )}
@@ -301,35 +341,35 @@ export default async function LearnPage({
               <div className="max-w-5xl mx-auto px-4 py-6">
                 <div className="flex items-start justify-between gap-4 mb-6">
                   <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                        Lesson {currentIdx + 1} of {lessons.length}
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
+                        {String(currentIdx + 1).padStart(2, "0")} / {String(lessons.length).padStart(2, "0")}
                       </span>
                       {!isEnrolled && currentLesson.is_free_preview && (
-                        <span className="inline-flex items-center rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-medium text-brand">Free preview</span>
+                        <span className="font-mono text-[10px] font-bold text-brand uppercase tracking-wider">free preview</span>
                       )}
                       {isQuiz && (
-                        <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">Quiz</span>
+                        <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase tracking-wider">quiz</span>
                       )}
                     </div>
-                    <h1 className="text-xl font-bold leading-snug">{currentLesson.title}</h1>
+                    <h1 className="text-xl font-bold tracking-tight leading-snug">{currentLesson.title}</h1>
                   </div>
                   {isCompleted && (
-                    <div className="flex items-center gap-1.5 text-xs text-green-500 shrink-0 font-medium mt-1">
-                      <CheckCircle className="h-4 w-4" />
-                      Completed
+                    <div className="flex items-center gap-1.5 shrink-0 mt-1">
+                      <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                      <span className="font-mono text-[10px] font-bold text-emerald-500 uppercase tracking-wide">done</span>
                     </div>
                   )}
                 </div>
 
                 {/* Enroll CTA for preview viewers */}
                 {!isEnrolled && currentLesson.is_free_preview && (
-                  <div className="mb-6 rounded-xl border border-brand/25 bg-gradient-to-r from-brand/8 via-brand/5 to-transparent px-5 py-4 flex items-center justify-between gap-4">
+                  <div className="mb-6 rounded-2xl border border-white/10 px-6 py-5 flex items-center justify-between gap-4" style={{ backgroundColor: "hsl(224,20%,8%)" }}>
                     <div>
-                      <p className="text-sm font-semibold">Enjoying this preview?</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Enroll to unlock all lessons and track your progress.</p>
+                      <p className="text-sm font-bold text-white">Enjoying this preview?</p>
+                      <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>Enroll to unlock all lessons and track your progress.</p>
                     </div>
-                    <Link href={`/courses/${courseId}`} className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-foreground hover:bg-brand/90 transition-colors">
+                    <Link href={`/courses/${courseId}`} className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2 text-xs font-bold text-brand-foreground hover:bg-brand/90 transition-colors">
                       Enroll now →
                     </Link>
                   </div>

@@ -1,19 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-
-async function assertInstructorAccess(
-  supabase: ReturnType<typeof createClient>,
-  courseId: string,
-  userId: string
-) {
-  const [{ data: profile }, { data: course }] = await Promise.all([
-    supabase.from("profiles").select("role").eq("id", userId).single(),
-    supabase.from("courses").select("id, instructor_id").eq("id", courseId).single(),
-  ]);
-  if (!course) return false;
-  if (profile?.role === "admin") return true;
-  return course.instructor_id === userId;
-}
+import { assertInstructorAccess } from "@/lib/server-utils";
 
 // POST — unlock a lesson for a student
 export async function POST(req: Request) {

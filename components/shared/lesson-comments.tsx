@@ -1,10 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MessageSquare, Trash2, CornerDownRight, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { initials } from "@/lib/utils";
 import type { LessonComment } from "@/types";
@@ -18,17 +15,89 @@ interface LessonCommentsProps {
 function formatRelative(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   if (diff < 60_000) return "just now";
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  return `${Math.floor(diff / 86_400_000)}d ago`;
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`;
+  return `${Math.floor(diff / 86_400_000)}d`;
 }
 
+function UserBadge({ name }: { name: string }) {
+  const ini = initials(name);
+  return (
+    <div className="h-6 w-6 shrink-0 rounded bg-brand/10 border border-brand/20 flex items-center justify-center font-mono text-[8px] font-black text-brand">
+      {ini}
+    </div>
+  );
+}
+
+function CommentInput({
+  placeholder,
+  value,
+  onChange,
+  onSubmit,
+  onCancel,
+  submitting,
+  submitLabel = "post",
+}: {
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+  onCancel?: () => void;
+  submitting: boolean;
+  submitLabel?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <div className="space-y-1.5">
+      <div
+        className={`relative rounded-lg border transition-colors duration-150 overflow-hidden ${
+          focused ? "border-brand/30 bg-card" : "border-border/40 bg-muted/20"
+        }`}
+      >
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder={placeholder}
+          rows={3}
+          spellCheck={false}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) onSubmit();
+          }}
+          className="w-full resize-none bg-transparent px-3 py-2.5 font-mono text-[12px] leading-5 text-foreground placeholder:text-muted-foreground/30 focus:outline-none"
+          style={{ caretColor: "hsl(38,85%,50%)" }}
+        />
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[9px] text-muted-foreground/30">⌘+enter to submit</span>
+        <div className="flex items-center gap-2">
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              className="font-mono text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+            >
+              cancel
+            </button>
+          )}
+          <button
+            onClick={onSubmit}
+            disabled={submitting || !value.trim()}
+            className="flex items-center gap-1.5 rounded-md px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest bg-brand/10 border border-brand/30 text-brand hover:bg-brand/15 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {submitting ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : null}
+            {submitLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function CommentItem({
   comment,
   currentUserId,
-  lessonId,
-  courseId,
   onDelete,
   onReply,
 }: {
@@ -56,63 +125,63 @@ function CommentItem({
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-3">
-        <Avatar className="h-8 w-8 shrink-0 mt-0.5">
-          <AvatarFallback className="text-xs bg-muted">{initials(name)}</AvatarFallback>
-        </Avatar>
+      <div className="flex gap-2.5">
+        <UserBadge name={name} />
         <div className="flex-1 min-w-0">
+          {/* Meta row */}
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-medium">{name}</span>
-            <span className="text-xs text-muted-foreground">{formatRelative(comment.created_at)}</span>
+            <span className="font-mono text-[11px] font-bold text-foreground/80">{name}</span>
+            <span className="font-mono text-[9px] text-muted-foreground/40 tabular-nums">
+              {formatRelative(comment.created_at)} ago
+            </span>
           </div>
-          <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap break-words">
+
+          {/* Body */}
+          <p className="text-[13px] text-foreground/80 leading-relaxed whitespace-pre-wrap break-words">
             {comment.body}
           </p>
+
+          {/* Actions */}
           <div className="flex items-center gap-3 mt-2">
             <button
               onClick={() => setShowReply((v) => !v)}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40 hover:text-brand transition-colors"
             >
-              <CornerDownRight className="h-3 w-3" />
-              Reply
+              ↳ reply
             </button>
+
             {comment.replies && comment.replies.length > 0 && (
               <button
                 onClick={() => setShowReplies((v) => !v)}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                className="flex items-center gap-0.5 font-mono text-[9px] text-muted-foreground/40 hover:text-muted-foreground transition-colors"
               >
-                {showReplies ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                {comment.replies.length} {comment.replies.length === 1 ? "reply" : "replies"}
+                {showReplies ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
+                <span className="tabular-nums">{comment.replies.length}</span>
               </button>
             )}
+
             {comment.student_id === currentUserId && (
               <button
                 onClick={() => onDelete(comment.id)}
-                className="text-xs text-muted-foreground hover:text-destructive transition-colors ml-auto"
+                className="ml-auto font-mono text-[9px] text-muted-foreground/25 hover:text-red-500/60 transition-colors"
               >
-                <Trash2 className="h-3 w-3" />
+                <Trash2 className="h-2.5 w-2.5" />
               </button>
             )}
           </div>
 
           {/* Reply input */}
           {showReply && (
-            <div className="mt-3 flex gap-2">
-              <Textarea
+            <div className="mt-3">
+              <CommentInput
+                placeholder="// write a reply…"
                 value={replyBody}
-                onChange={(e) => setReplyBody(e.target.value)}
-                placeholder="Write a reply…"
-                rows={2}
-                className="text-sm resize-none flex-1"
+                onChange={setReplyBody}
+                onSubmit={handleReply}
+                onCancel={() => setShowReply(false)}
+                submitting={submitting}
+                submitLabel="reply"
               />
-              <div className="flex flex-col gap-1.5">
-                <Button size="sm" disabled={submitting || !replyBody.trim()} onClick={handleReply} className="h-8 text-xs">
-                  {submitting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Post"}
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setShowReply(false)} className="h-8 text-xs">
-                  Cancel
-                </Button>
-              </div>
             </div>
           )}
         </div>
@@ -120,35 +189,34 @@ function CommentItem({
 
       {/* Replies */}
       {showReplies && comment.replies && comment.replies.length > 0 && (
-        <div className="ml-11 space-y-3 border-l-2 border-border pl-4">
-          {comment.replies.map((reply) => (
-            <div key={reply.id} className="flex gap-3">
-              <Avatar className="h-7 w-7 shrink-0 mt-0.5">
-                <AvatarFallback className="text-xs bg-muted">
-                  {initials((reply.profiles as { full_name: string | null } | null)?.full_name ?? null)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium">
-                    {(reply.profiles as { full_name: string | null } | null)?.full_name ?? "Student"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{formatRelative(reply.created_at)}</span>
+        <div className="ml-8 space-y-3 border-l border-brand/15 pl-3">
+          {comment.replies.map((reply) => {
+            const replyName = (reply.profiles as { full_name: string | null } | null)?.full_name ?? "Student";
+            return (
+              <div key={reply.id} className="flex gap-2.5">
+                <UserBadge name={replyName} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-mono text-[11px] font-bold text-foreground/80">{replyName}</span>
+                    <span className="font-mono text-[9px] text-muted-foreground/40 tabular-nums">
+                      {formatRelative(reply.created_at)} ago
+                    </span>
+                  </div>
+                  <p className="text-[13px] text-foreground/80 leading-relaxed whitespace-pre-wrap break-words">
+                    {reply.body}
+                  </p>
+                  {reply.student_id === currentUserId && (
+                    <button
+                      onClick={() => onDelete(reply.id)}
+                      className="mt-1.5 font-mono text-[9px] text-muted-foreground/25 hover:text-red-500/60 transition-colors"
+                    >
+                      <Trash2 className="h-2.5 w-2.5" />
+                    </button>
+                  )}
                 </div>
-                <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap break-words">
-                  {reply.body}
-                </p>
-                {reply.student_id === currentUserId && (
-                  <button
-                    onClick={() => onDelete(reply.id)}
-                    className="mt-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -227,52 +295,48 @@ export function LessonComments({ lessonId, courseId, currentUserId }: LessonComm
   };
 
   return (
-    <div className="mt-8 border-t border-border pt-8">
-      <h3 className="font-semibold mb-5 flex items-center gap-2">
-        <MessageSquare className="h-4 w-4 text-muted-foreground" />
-        Discussion
-        {comments.length > 0 && (
-          <span className="text-sm font-normal text-muted-foreground">· {comments.length}</span>
-        )}
-      </h3>
+    <div className="mt-6 pt-6 border-t border-border/40">
 
-      {/* Post a comment */}
-      <div className="flex gap-3 mb-6">
-        <Avatar className="h-8 w-8 shrink-0 mt-0.5">
-          <AvatarFallback className="text-xs bg-muted">You</AvatarFallback>
-        </Avatar>
-        <div className="flex-1 space-y-2">
-          <Textarea
+      {/* Section header */}
+      <div className="flex items-center gap-2 mb-5">
+        <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">
+          discussion
+        </span>
+        {comments.length > 0 && (
+          <span className="font-mono text-[9px] tabular-nums text-muted-foreground/30">
+            [{comments.length}]
+          </span>
+        )}
+      </div>
+
+      {/* Compose */}
+      <div className="flex gap-2.5 mb-6">
+        <div className="h-6 w-6 shrink-0 mt-0.5 rounded bg-brand/20 border border-brand/30 flex items-center justify-center font-mono text-[8px] font-black text-brand">
+          me
+        </div>
+        <div className="flex-1">
+          <CommentInput
+            placeholder="// ask a question or share your thoughts…"
             value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Ask a question or share your thoughts…"
-            rows={3}
-            className="text-sm resize-none"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handlePost();
-            }}
+            onChange={setBody}
+            onSubmit={handlePost}
+            submitting={posting}
           />
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">⌘+Enter to submit</span>
-            <Button size="sm" disabled={posting || !body.trim()} onClick={handlePost} className="h-8 text-xs">
-              {posting ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : null}
-              Post
-            </Button>
-          </div>
         </div>
       </div>
 
       {/* Comments list */}
       {loading ? (
-        <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading discussion…
+        <div className="flex items-center gap-2 py-4 font-mono text-[11px] text-muted-foreground/40">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          loading…
         </div>
       ) : comments.length === 0 ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">
-          No comments yet. Be the first to start the discussion!
-        </p>
+        <div className="py-8 text-center">
+          <p className="font-mono text-[10px] text-muted-foreground/30">— no messages yet —</p>
+        </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {comments.map((c) => (
             <CommentItem
               key={c.id}

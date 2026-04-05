@@ -27,7 +27,7 @@ export async function GET(req: Request) {
 
   // Fetch replies for each top-level comment
   const commentIds = (data ?? []).map((c) => c.id);
-  let replies: Record<string, unknown[]> = {};
+  const replies: Record<string, unknown[]> = {};
   if (commentIds.length > 0) {
     const { data: replyRows } = await supabase
       .from("lesson_comments")

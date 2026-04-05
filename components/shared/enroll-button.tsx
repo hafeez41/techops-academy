@@ -72,7 +72,7 @@ export function EnrollButton({ courseId, userId, price = 0, firstLessonId }: Enr
           <a href="/#contact" className="underline underline-offset-2 hover:text-foreground">
             contact us
           </a>{" "}
-          and we'll get you set up.
+          and we&apos;ll get you set up.
         </p>
       </div>
     );
