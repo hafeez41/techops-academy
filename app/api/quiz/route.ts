@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { assertInstructorAccess } from "@/lib/server-utils";
 
 // GET /api/quiz?lessonId= — fetch questions + options + student's last attempt
 export async function GET(req: Request) {
@@ -111,52 +112,45 @@ export async function PUT(req: Request) {
   }
 
   // Verify instructor/admin access
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  const { data: course } = await supabase
-    .from("courses")
-    .select("instructor_id")
-    .eq("id", courseId)
-    .single();
-
-  const isAdmin = profile?.role === "admin";
-  const isInstructor = course?.instructor_id === user.id;
-  if (!isAdmin && !isInstructor) {
+  const hasAccess = await assertInstructorAccess(supabase, courseId, user.id);
+  if (!hasAccess) {
     return NextResponse.json({ error: "Access denied" }, { status: 403 });
   }
 
   // Delete existing questions (cascade deletes options + attempts)
   await supabase.from("quiz_questions").delete().eq("lesson_id", lessonId);
 
-  // Re-insert
-  for (let i = 0; i < questions.length; i++) {
-    const q = questions[i];
-    const { data: inserted } = await supabase
-      .from("quiz_questions")
-      .insert({
-        lesson_id: lessonId,
-        course_id: courseId,
-        question: q.question,
-        position: i,
-        pass_threshold: q.pass_threshold ?? 70,
-      })
-      .select("id")
-      .single();
+  // Re-insert questions in parallel — each question's options depend on its
+  // inserted ID so we parallelize at the question level, not option level.
+  type QuizOption = { text: string; is_correct: boolean };
+  type QuizQuestion = { question: string; pass_threshold?: number; options?: QuizOption[] };
 
-    if (inserted && q.options?.length) {
-      await supabase.from("quiz_options").insert(
-        q.options.map((opt: { text: string; is_correct: boolean }, j: number) => ({
-          question_id: inserted.id,
-          text: opt.text,
-          is_correct: opt.is_correct,
-          position: j,
-        }))
-      );
-    }
-  }
+  await Promise.all(
+    (questions as QuizQuestion[]).map(async (q, i) => {
+      const { data: inserted } = await supabase
+        .from("quiz_questions")
+        .insert({
+          lesson_id: lessonId,
+          course_id: courseId,
+          question: q.question,
+          position: i,
+          pass_threshold: q.pass_threshold ?? 70,
+        })
+        .select("id")
+        .single();
+
+      if (inserted && q.options?.length) {
+        await supabase.from("quiz_options").insert(
+          q.options.map((opt, j) => ({
+            question_id: inserted.id,
+            text: opt.text,
+            is_correct: opt.is_correct,
+            position: j,
+          }))
+        );
+      }
+    })
+  );
 
   return NextResponse.json({ success: true });
 }

@@ -71,28 +71,27 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check progress for enrolled prerequisites
-    for (const prereqId of prereqIds) {
-      const { data: lessons } = await supabase
-        .from("lessons")
-        .select("id")
-        .eq("course_id", prereqId);
-      const { data: progress } = await supabase
-        .from("progress")
-        .select("lesson_id")
-        .eq("student_id", user.id)
-        .eq("course_id", prereqId);
+    // Batch-fetch all lessons and progress for all prereqs at once
+    const [{ data: allLessons }, { data: allProgress }, { data: prereqCourses }] =
+      await Promise.all([
+        supabase.from("lessons").select("id, course_id").in("course_id", prereqIds),
+        supabase
+          .from("progress")
+          .select("lesson_id, course_id")
+          .eq("student_id", user.id)
+          .in("course_id", prereqIds),
+        supabase.from("courses").select("id, title").in("id", prereqIds),
+      ]);
 
-      const lessonCount = lessons?.length ?? 0;
-      const completedCount = progress?.length ?? 0;
-      if (lessonCount > 0 && completedCount < lessonCount) {
-        const { data: prereqCourse } = await supabase
-          .from("courses")
-          .select("title")
-          .eq("id", prereqId)
-          .single();
+    for (const prereqId of prereqIds) {
+      const lessons = allLessons?.filter((l) => l.course_id === prereqId) ?? [];
+      const completed = allProgress?.filter((p) => p.course_id === prereqId) ?? [];
+      if (lessons.length > 0 && completed.length < lessons.length) {
+        const title =
+          prereqCourses?.find((c) => c.id === prereqId)?.title ??
+          "a prerequisite course";
         return NextResponse.json(
-          { error: `Complete "${prereqCourse?.title ?? "a prerequisite course"}" before enrolling.` },
+          { error: `Complete "${title}" before enrolling.` },
           { status: 403 }
         );
       }

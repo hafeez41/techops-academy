@@ -103,8 +103,6 @@ function CommentItem({
 }: {
   comment: LessonComment;
   currentUserId: string;
-  lessonId: string;
-  courseId: string;
   onDelete: (id: string) => void;
   onReply: (parentId: string, body: string) => Promise<void>;
 }) {
@@ -342,8 +340,6 @@ export function LessonComments({ lessonId, courseId, currentUserId }: LessonComm
               key={c.id}
               comment={c}
               currentUserId={currentUserId}
-              lessonId={lessonId}
-              courseId={courseId}
               onDelete={handleDelete}
               onReply={handleReply}
             />

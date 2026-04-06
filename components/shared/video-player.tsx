@@ -106,8 +106,8 @@ export function VideoPlayer({
   const [resumePosition, setResumePosition] = useState<number | null>(null);
   const router = useRouter();
   const lastSavedRef = useRef(0);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const playerRef = useRef<any>(null);
+  // MuxPlayerElement is not publicly exported — use HTMLVideoElement for currentTime access
+  const playerRef = useRef<HTMLVideoElement | null>(null);
 
   const youtubeId = youtubeUrl ? extractYouTubeId(youtubeUrl) : null;
   const hasMux = !!playbackId;
@@ -183,19 +183,18 @@ export function VideoPlayer({
           {hasMux ? (
             <>
               <MuxPlayer
-                ref={playerRef}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ref={playerRef as any}
                 playbackId={playbackId!}
                 streamType="on-demand"
                 style={{ width: "100%", height: "100%" }}
                 startTime={resumePosition ?? undefined}
                 onTimeUpdate={(e) => {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  const t = (e.target as any)?.currentTime;
+                  const t = (e.target as HTMLMediaElement)?.currentTime;
                   if (typeof t === "number") savePosition(t);
                 }}
                 onDurationChange={(e) => {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  const duration = (e.target as any)?.duration;
+                  const duration = (e.target as HTMLMediaElement)?.duration;
                   if (
                     typeof duration === "number" &&
                     resumePosition !== null &&
