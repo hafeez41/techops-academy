@@ -30,7 +30,7 @@ export default async function InstructorProfilePage({
 
   const { data: courses } = await supabase
     .from("courses")
-    .select("*, profiles(*), lessons(count), enrollments(count)")
+    .select("*, profiles(*), lessons(id, duration_seconds), enrollments(count)")
     .eq("instructor_id", params.id)
     .eq("is_published", true)
     .order("created_at", { ascending: false });

@@ -27,7 +27,7 @@ export default async function CoursesPage({
 
   let query = supabase
     .from("courses")
-    .select(`*, profiles(*), lessons(count), enrollments(count), reviews(rating)`)
+    .select(`*, profiles(*), lessons(id, duration_seconds), enrollments(count), reviews(rating)`)
     .eq("is_published", true)
     .order("created_at", { ascending: false });
 
