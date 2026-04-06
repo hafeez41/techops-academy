@@ -57,24 +57,29 @@ const testimonials = [
 
 const faqs = [
   {
-    question: "What payment options are available?",
+    question: "How does access work?",
     answer:
-      "We offer flexible payment plans for all bundles. The DevOps Bundle can be paid as a one-time fee of $4,000, in 6 monthly installments of $750, or in 3 installments of $1,500. The Accounting Bundle is $3,000 one-time or 2 installments of $1,750. Accounts Payable is $2,000. Contact us to discuss the best option for you.",
+      "TechOps Academy operates on an invite-only model. Once you've been accepted onto a programme, your payment is arranged directly with us — not through the platform. After that, your account is created and you're given immediate access to all your enrolled courses.",
+  },
+  {
+    question: "How do I get started?",
+    answer:
+      "Reach out to us through the contact form or book a free consultation. We'll discuss your goals, confirm your place on the right programme, and handle everything from there. You'll receive your login credentials once your enrolment is confirmed.",
   },
   {
     question: "What is the refund policy?",
     answer:
-      "We offer a satisfaction guarantee. If you are not satisfied with the course content within the first 7 days of enrollment, you may request a full refund. After 7 days, refunds are evaluated on a case-by-case basis. Please contact support@techopsacademy.com to initiate a refund request.",
+      "We offer a satisfaction guarantee. If you are not satisfied with the course content within the first 7 days of access, you may request a full refund. After 7 days, refunds are evaluated on a case-by-case basis. Please contact support@techopsacademy.com to initiate a refund request.",
   },
   {
-    question: "Do you offer any discount coupons?",
+    question: "Can I access the courses at my own pace?",
     answer:
-      "Yes! We periodically run promotions and offer referral discounts. Follow us on social media and subscribe to our newsletter to stay up to date. You can also ask about group discounts if you're enrolling with a colleague.",
+      "Yes. Once you have access, courses are available on-demand and you can progress at your own pace. Some programmes use instructor-gated progression, where your instructor unlocks lessons as you advance — this depends on the programme you're enrolled in.",
   },
   {
     question: "How do I manage my account?",
     answer:
-      "Once enrolled, you can log into your student dashboard to access course materials, track your progress, download resources, and communicate with instructors. Visit the dashboard from the navigation menu after logging in.",
+      "After logging in, your student dashboard gives you access to all your courses, progress tracking, notes, certificates, and more. Use the navigation menu at the top to get there.",
   },
   {
     question: "I forgot my password. How do I reset it?",

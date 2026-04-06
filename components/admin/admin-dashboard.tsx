@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Users, BookOpen, TrendingUp, Eye, EyeOff, Shield,
@@ -36,8 +35,6 @@ export function AdminDashboard({
   courses: Course[];
   adminId?: string; // kept in prop signature for future use
 }) {
-  const supabase = createClient();
-
   const [tab, setTab] = useState<Tab>("overview");
   const [courses, setCourses] = useState<Course[]>(initialCourses);
   const [users, setUsers] = useState<Profile[]>(initialUsers);
@@ -48,7 +45,11 @@ export function AdminDashboard({
 
   const togglePublish = async (course: Course) => {
     setUpdatingId(course.id);
-    await supabase.from("courses").update({ is_published: !course.is_published }).eq("id", course.id);
+    await fetch("/api/admin/courses", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ courseId: course.id, is_published: !course.is_published }),
+    });
     setCourses((p) => p.map((c) => c.id === course.id ? { ...c, is_published: !c.is_published } : c));
     setUpdatingId(null);
   };
@@ -63,14 +64,22 @@ export function AdminDashboard({
 
   const setRole = async (userId: string, newRole: string) => {
     setUpdatingId(userId);
-    await supabase.from("profiles").update({ role: newRole }).eq("id", userId);
+    await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, role: newRole }),
+    });
     setUsers((p) => p.map((u) => u.id === userId ? { ...u, role: newRole } : u));
     setUpdatingId(null);
   };
 
   const deleteUser = async (id: string) => {
     setDeletingId(id);
-    await supabase.from("profiles").delete().eq("id", id);
+    await fetch("/api/admin/users", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: id }),
+    });
     setUsers((p) => p.filter((u) => u.id !== id));
     setDeletingId(null);
     setConfirmDelete(null);

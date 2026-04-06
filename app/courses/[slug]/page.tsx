@@ -159,10 +159,6 @@ export default async function CourseDetailPage({
         </div>
       ) : null}
       <div className="p-6 space-y-4">
-        <div className={`text-4xl font-black tracking-tight ${course.price === 0 ? "text-amber-400" : "text-white"}`}>
-          {course.price === 0 ? "Free" : `$${course.price}`}
-        </div>
-
         {/* Prerequisites */}
         {prerequisites.length > 0 && !isEnrolled && (
           <div className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-2">
@@ -201,7 +197,7 @@ export default async function CourseDetailPage({
             </Link>
           </Button>
         ) : (
-          <EnrollButton courseId={course.id} userId={user?.id ?? null} price={course.price ?? 0} firstLessonId={firstLesson?.id ?? null} />
+          <EnrollButton courseId={course.id} userId={user?.id ?? null} firstLessonId={firstLesson?.id ?? null} />
         )}
 
         <div className="h-px bg-white/10" />

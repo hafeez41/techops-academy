@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -41,8 +40,6 @@ interface StudentsTabProps {
 }
 
 export function StudentsTab({ courseId, lessons, progressionMode }: StudentsTabProps) {
-  const supabase = createClient();
-
   const [students, setStudents] = useState<Student[]>([]);
   const [unlockedMap, setUnlockedMap] = useState<Record<string, Set<string>>>({});
   const [loading, setLoading] = useState(true);
@@ -55,10 +52,20 @@ export function StudentsTab({ courseId, lessons, progressionMode }: StudentsTabP
   const fetchStudents = useCallback(async () => {
     setLoading(true);
 
-    const { data: enrollments } = await supabase
-      .from("enrollments")
-      .select("student_id, enrolled_at, enrolled_by, profiles(id, full_name, email)")
-      .eq("course_id", courseId);
+    const params = new URLSearchParams({ courseId, progressionMode });
+    const res = await fetch(`/api/instructor/enroll?${params}`);
+    if (!res.ok) { setLoading(false); return; }
+
+    const { enrollments, progress, unlocks } = await res.json() as {
+      enrollments: Array<{
+        student_id: string;
+        enrolled_at: string;
+        enrolled_by: string | null;
+        profiles: { full_name: string | null; email: string | null } | null;
+      }>;
+      progress: Array<{ student_id: string; lesson_id: string }>;
+      unlocks: Array<{ student_id: string; lesson_id: string }>;
+    };
 
     if (!enrollments?.length) {
       setStudents([]);
@@ -66,33 +73,15 @@ export function StudentsTab({ courseId, lessons, progressionMode }: StudentsTabP
       return;
     }
 
-    const studentIds = enrollments.map((e) => e.student_id);
-
-    // Fetch progress counts and unlock data in parallel
-    const [{ data: progressRows }, { data: unlocks }] = await Promise.all([
-      supabase
-        .from("progress")
-        .select("student_id, lesson_id")
-        .eq("course_id", courseId)
-        .in("student_id", studentIds),
-      progressionMode === "instructor_gated"
-        ? supabase
-            .from("lesson_unlocks")
-            .select("student_id, lesson_id")
-            .eq("course_id", courseId)
-            .in("student_id", studentIds)
-        : Promise.resolve({ data: [] }),
-    ]);
-
     // Build progress count per student
     const progressCount: Record<string, number> = {};
-    for (const p of progressRows ?? []) {
+    for (const p of progress ?? []) {
       progressCount[p.student_id] = (progressCount[p.student_id] ?? 0) + 1;
     }
 
     // Build unlock sets per student
     const unlockSets: Record<string, Set<string>> = {};
-    for (const u of (unlocks as { student_id: string; lesson_id: string }[] | null) ?? []) {
+    for (const u of unlocks ?? []) {
       if (!unlockSets[u.student_id]) unlockSets[u.student_id] = new Set();
       unlockSets[u.student_id].add(u.lesson_id);
     }
@@ -100,8 +89,8 @@ export function StudentsTab({ courseId, lessons, progressionMode }: StudentsTabP
 
     const mapped: Student[] = enrollments.map((e) => ({
       id: e.student_id,
-      full_name: (e.profiles as unknown as { full_name: string | null; email: string | null } | null)?.full_name ?? null,
-      email: (e.profiles as unknown as { full_name: string | null; email: string | null } | null)?.email ?? e.student_id,
+      full_name: e.profiles?.full_name ?? null,
+      email: e.profiles?.email ?? e.student_id,
       enrolled_at: e.enrolled_at,
       enrolled_by: e.enrolled_by,
       completedCount: progressCount[e.student_id] ?? 0,
@@ -109,7 +98,7 @@ export function StudentsTab({ courseId, lessons, progressionMode }: StudentsTabP
 
     setStudents(mapped);
     setLoading(false);
-  }, [courseId, progressionMode, supabase]);
+  }, [courseId, progressionMode]);
 
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
 

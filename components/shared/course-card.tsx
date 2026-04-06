@@ -22,8 +22,6 @@ export function CourseCard({ course, isAdmin = false }: CourseCardProps) {
       ? course.reviews.reduce((s: number, r: { rating: number }) => s + r.rating, 0) / course.reviews.length
       : null;
 
-  const isPaid = course.price > 0;
-
   return (
     <Link href={`/courses/${course.slug}`} className="group block h-full">
       <article className="relative flex flex-col h-full rounded-xl bg-card border border-border/50 overflow-hidden transition-all duration-200 hover:border-border hover:shadow-xl hover:shadow-black/10 hover:-translate-y-0.5">
@@ -54,16 +52,9 @@ export function CourseCard({ course, isAdmin = false }: CourseCardProps) {
           {/* Bottom scrim */}
           <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-card/95 to-transparent" />
 
-          {/* Price — bottom left over scrim */}
-          <div className="absolute bottom-3 left-3">
-            <span className={`font-mono text-lg font-black leading-none tabular-nums ${isPaid ? "text-foreground" : "text-brand"}`}>
-              {isPaid ? `$${course.price}` : "Free"}
-            </span>
-          </div>
-
-          {/* Category — top right */}
+          {/* Category — bottom left over scrim */}
           {course.categories?.[0] && (
-            <div className="absolute top-2.5 right-2.5">
+            <div className="absolute bottom-3 left-3">
               <span className="font-mono text-[9px] font-bold uppercase tracking-widest bg-background/80 backdrop-blur-sm text-muted-foreground px-2 py-0.5 rounded border border-border/40">
                 {course.categories[0]}
               </span>

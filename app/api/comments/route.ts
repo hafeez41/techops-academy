@@ -91,6 +91,26 @@ export async function DELETE(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Fetch the comment first to check ownership (admins can delete any comment)
+  const { data: comment } = await supabase
+    .from("lesson_comments")
+    .select("student_id")
+    .eq("id", id)
+    .single();
+
+  if (!comment) return NextResponse.json({ error: "Comment not found" }, { status: 404 });
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  const isAdmin = profile?.role === "admin";
+  if (!isAdmin && comment.student_id !== user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { error } = await supabase
     .from("lesson_comments")
     .delete()

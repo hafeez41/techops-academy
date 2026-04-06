@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { Navbar } from "@/components/shared/navbar";
 import { InstructorHub } from "@/components/instructor/instructor-hub";
 import type { Course } from "@/types";
@@ -19,7 +19,10 @@ export default async function InstructorPage() {
 
   if (!profile || profile.role !== "instructor") redirect("/dashboard");
 
-  const { data: courses } = await supabase
+  // Use service client for all queries that read other users' data (enrollments, progress)
+  const adminClient = createServiceClient();
+
+  const { data: courses } = await adminClient
     .from("courses")
     .select("*, lessons(count), enrollments(count)")
     .eq("instructor_id", user.id)
@@ -35,19 +38,22 @@ export default async function InstructorPage() {
   const publishedCourses = courses?.filter((c: { is_published: boolean }) => c.is_published).length ?? 0;
 
   // Compute avg completion rate across all courses
-  // Fetch lesson counts and progress counts for all instructor courses
   let avgCompletionRate = 0;
   if (courses && courses.length > 0) {
     const courseIds = courses.map((c: { id: string }) => c.id);
 
-    const [{ data: allProgress }, { data: allLessons }] = await Promise.all([
-      supabase
+    const [{ data: allProgress }, { data: allLessons }, { data: allEnrollments }] = await Promise.all([
+      adminClient
         .from("progress")
         .select("course_id, student_id, lesson_id")
         .in("course_id", courseIds),
-      supabase
+      adminClient
         .from("lessons")
         .select("id, course_id")
+        .in("course_id", courseIds),
+      adminClient
+        .from("enrollments")
+        .select("course_id, student_id")
         .in("course_id", courseIds),
     ]);
 
@@ -64,28 +70,13 @@ export default async function InstructorPage() {
       progressByKey[key] = (progressByKey[key] ?? 0) + 1;
     }
 
-    // For each enrollment (course + student pair), compute pct
+    // For each enrollment compute completion pct (0% if no progress)
     const pcts: number[] = [];
-    for (const key of Object.keys(progressByKey)) {
-      const [cId] = key.split(":");
-      const total = lessonCountByCourse[cId] ?? 0;
-      if (total > 0) {
-        pcts.push(Math.min(100, Math.round((progressByKey[key] / total) * 100)));
-      }
-    }
-
-    // Also include enrolled students with 0% (no progress rows)
-    // We count total enrollments and subtract those with any progress
-    const { data: allEnrollments } = await supabase
-      .from("enrollments")
-      .select("course_id, student_id")
-      .in("course_id", courseIds);
-
     for (const e of allEnrollments ?? []) {
       const key = `${e.course_id}:${e.student_id}`;
-      if (!progressByKey[key]) {
-        pcts.push(0);
-      }
+      const completed = progressByKey[key] ?? 0;
+      const total = lessonCountByCourse[e.course_id] ?? 0;
+      pcts.push(total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0);
     }
 
     if (pcts.length > 0) {

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, BookOpen, TrendingUp, Eye, EyeOff } from "lucide-react";
@@ -134,64 +133,50 @@ interface Props {
 export function AnalyticsPanel({ instructorId }: Props) {
   const [courses, setCourses] = useState<CourseStat[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
 
   useEffect(() => {
     async function load() {
-      // 1. Fetch courses with lessons + instructor profile
-      let q = supabase
-        .from("courses")
-        .select("id, title, is_published, instructor_id, profiles(full_name), lessons(id, title, position)")
-        .order("created_at", { ascending: false });
+      const params = new URLSearchParams();
+      if (instructorId) params.set("instructorId", instructorId);
 
-      if (instructorId) q = q.eq("instructor_id", instructorId);
+      const res = await fetch(`/api/analytics?${params}`);
+      if (!res.ok) { setLoading(false); return; }
 
-      const { data: rawCourses } = await q;
-      if (!rawCourses || rawCourses.length === 0) {
-        setCourses([]);
-        setLoading(false);
-        return;
-      }
+      const { courses: rawCourses, enrollments, progress: progressData } = await res.json() as {
+        courses: Array<{
+          id: string;
+          title: string;
+          is_published: boolean;
+          instructor_id: string;
+          profiles: { full_name: string | null } | null;
+          lessons: { id: string; title: string; position: number }[];
+        }>;
+        enrollments: Array<{ course_id: string; student_id: string }>;
+        progress: Array<{ lesson_id: string; course_id: string; student_id: string }>;
+      };
 
-      const courseIds = rawCourses.map((c: { id: string }) => c.id);
+      if (!rawCourses?.length) { setCourses([]); setLoading(false); return; }
 
-      // 2. Fetch enrollments + progress in parallel
-      const [{ data: enrollments }, { data: progressData }] = await Promise.all([
-        supabase.from("enrollments").select("course_id, student_id").in("course_id", courseIds),
-        supabase.from("progress").select("lesson_id, course_id, student_id").in("course_id", courseIds),
-      ]);
-
-      // 3. Build per-course stats
-      const stats: CourseStat[] = (rawCourses as unknown as Array<{
-        id: string;
-        title: string;
-        is_published: boolean;
-        instructor_id: string;
-        profiles: { full_name: string | null } | null;
-        lessons: { id: string; title: string; position: number }[];
-      }>).map((c) => {
-        const courseEnrollments = (enrollments ?? []).filter((e) => e.course_id === c.id);
+      const stats: CourseStat[] = rawCourses.map((c) => {
+        const courseEnrollments = enrollments.filter((e) => e.course_id === c.id);
         const enrolled = courseEnrollments.length;
         const enrolledStudentIds = new Set(courseEnrollments.map((e) => e.student_id));
 
-        const courseProgress = (progressData ?? []).filter((p) => p.course_id === c.id);
+        const courseProgress = progressData.filter((p) => p.course_id === c.id);
         const sortedLessons = [...(c.lessons ?? [])].sort((a, b) => a.position - b.position);
         const totalLessons = sortedLessons.length;
 
-        // Per-lesson completion counts
         const lessonCompletions = new Map<string, number>();
         for (const p of courseProgress) {
           lessonCompletions.set(p.lesson_id, (lessonCompletions.get(p.lesson_id) ?? 0) + 1);
         }
 
-        // Per-student progress (for avgProgress)
         const progressByStudent = new Map<string, Set<string>>();
         for (const p of courseProgress) {
           if (!progressByStudent.has(p.student_id)) progressByStudent.set(p.student_id, new Set());
           progressByStudent.get(p.student_id)!.add(p.lesson_id);
         }
 
-        // Completed students (done all lessons)
         let completedStudents = 0;
         let totalPctSum = 0;
         for (const studentId of Array.from(enrolledStudentIds)) {
@@ -201,8 +186,6 @@ export function AnalyticsPanel({ instructorId }: Props) {
           if (pct >= 1) completedStudents++;
         }
 
-        const avgProgress = enrolled > 0 ? (totalPctSum / enrolled) * 100 : 0;
-
         return {
           id: c.id,
           title: c.title,
@@ -211,7 +194,7 @@ export function AnalyticsPanel({ instructorId }: Props) {
           enrolled,
           totalLessons,
           completedStudents,
-          avgProgress,
+          avgProgress: enrolled > 0 ? (totalPctSum / enrolled) * 100 : 0,
           lessons: sortedLessons.map((l) => ({
             id: l.id,
             title: l.title,
@@ -226,7 +209,7 @@ export function AnalyticsPanel({ instructorId }: Props) {
     }
 
     load();
-  }, [instructorId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [instructorId]);
 
   // Summary totals
   const totalEnrolled = courses.reduce((s, c) => s + c.enrolled, 0);

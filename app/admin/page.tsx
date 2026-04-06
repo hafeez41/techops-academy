@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { Navbar } from "@/components/shared/navbar";
 import { AdminDashboard } from "@/components/admin/admin-dashboard";
 
@@ -18,20 +18,23 @@ export default async function AdminPage() {
 
   if (profile?.role !== "admin") redirect("/dashboard");
 
+  // Service client bypasses RLS — admin needs to read all users/enrollments/courses
+  const adminClient = createServiceClient();
+
   const [
     { count: totalUsers },
     { count: totalEnrollments },
     { data: recentUsers },
     { data: allCourses },
   ] = await Promise.all([
-    supabase.from("profiles").select("id", { count: "exact", head: true }),
-    supabase.from("enrollments").select("id", { count: "exact", head: true }),
-    supabase
+    adminClient.from("profiles").select("id", { count: "exact", head: true }),
+    adminClient.from("enrollments").select("id", { count: "exact", head: true }),
+    adminClient
       .from("profiles")
       .select("id, full_name, email, role, created_at")
       .order("created_at", { ascending: false })
       .limit(50),
-    supabase
+    adminClient
       .from("courses")
       .select("id, title, slug, is_published, price, categories, description, thumbnail_url, created_at, instructor_id, profiles(full_name)")
       .order("created_at", { ascending: false }),

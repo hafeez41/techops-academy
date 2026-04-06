@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getMux } from "@/lib/mux";
 
 export async function DELETE(
@@ -58,16 +58,18 @@ export async function DELETE(
   }
 
   // 7. Delete DB records (order matters for FK constraints)
+  // Use service client so RLS on enrollments/progress/reviews doesn't block cascade
+  const adminClient = createServiceClient();
   if (lessonIds.length) {
-    await supabase.from("lesson_files").delete().in("lesson_id", lessonIds);
+    await adminClient.from("lesson_files").delete().in("lesson_id", lessonIds);
   }
   await Promise.all([
-    supabase.from("lessons").delete().eq("course_id", courseId),
-    supabase.from("enrollments").delete().eq("course_id", courseId),
-    supabase.from("progress").delete().eq("course_id", courseId),
-    supabase.from("reviews").delete().eq("course_id", courseId),
+    adminClient.from("lessons").delete().eq("course_id", courseId),
+    adminClient.from("enrollments").delete().eq("course_id", courseId),
+    adminClient.from("progress").delete().eq("course_id", courseId),
+    adminClient.from("reviews").delete().eq("course_id", courseId),
   ]);
-  await supabase.from("courses").delete().eq("id", courseId);
+  await adminClient.from("courses").delete().eq("id", courseId);
 
   return NextResponse.json({ success: true });
 }

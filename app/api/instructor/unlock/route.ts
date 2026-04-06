@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { assertInstructorAccess } from "@/lib/server-utils";
 
 // POST — unlock a lesson for a student
@@ -16,7 +16,8 @@ export async function POST(req: Request) {
   const allowed = await assertInstructorAccess(supabase, courseId, user.id);
   if (!allowed) return NextResponse.json({ error: "Access denied" }, { status: 403 });
 
-  const { error } = await supabase.from("lesson_unlocks").upsert(
+  const adminClient = createServiceClient();
+  const { error } = await adminClient.from("lesson_unlocks").upsert(
     { student_id: studentId, course_id: courseId, lesson_id: lessonId, unlocked_by: user.id },
     { onConflict: "student_id,lesson_id" }
   );
@@ -39,7 +40,8 @@ export async function DELETE(req: Request) {
   const allowed = await assertInstructorAccess(supabase, courseId, user.id);
   if (!allowed) return NextResponse.json({ error: "Access denied" }, { status: 403 });
 
-  const { error } = await supabase
+  const adminClient = createServiceClient();
+  const { error } = await adminClient
     .from("lesson_unlocks")
     .delete()
     .eq("student_id", studentId)

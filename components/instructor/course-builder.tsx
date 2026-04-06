@@ -1045,10 +1045,7 @@ export function CourseBuilder({
                     )}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Price (USD)</Label>
-                  <Input type="number" min="0" step="0.01" placeholder="0" value={price} onChange={(e) => setPrice(e.target.value)} />
-                </div>
+                {/* Price field hidden — access is granted by invitation, not purchased on-site */}
               </div>
 
               {/* Progression mode */}
