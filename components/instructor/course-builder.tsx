@@ -69,6 +69,25 @@ function YtIcon({ className }: { className?: string }) {
 import type { Course, Lesson, LessonType, ProgressionMode, CourseSection } from "@/types";
 import { CATEGORIES as CAT_LIST } from "@/types";
 
+/** Parse "1:23:45" or "23:45" or "45" into total seconds. Returns null if invalid. */
+function parseDurationInput(raw: string): number | null {
+  const parts = raw.trim().split(":").map(Number);
+  if (parts.some(isNaN)) return null;
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 1 && parts[0] > 0) return parts[0];
+  return null;
+}
+
+/** Format seconds as "h:mm:ss" or "m:ss" */
+function formatDurationInput(secs: number): string {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 interface CourseBuilderProps {
   course: Course | null;
   lessons: Lesson[];
@@ -260,17 +279,31 @@ function VideoSourcePicker({
 
   if (hasYoutube) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3 flex-wrap">
         <span className="flex items-center gap-1.5 text-xs text-red-500 font-mono">
           <YtIcon className="h-3.5 w-3.5" />
           youtube/{youtubeId}
         </span>
         <button
-          onClick={() => onUpdate(lesson.id, { external_url: null })}
-          className="text-[10px] font-mono text-muted-foreground/50 hover:text-destructive transition-colors ml-1"
+          onClick={() => onUpdate(lesson.id, { external_url: null, duration_seconds: null })}
+          className="text-[10px] font-mono text-muted-foreground/50 hover:text-destructive transition-colors"
         >
           ✕ remove
         </button>
+        {/* Manual duration input for YouTube lessons */}
+        <div className="flex items-center gap-1.5">
+          <Clock className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+          <input
+            type="text"
+            placeholder="hh:mm:ss"
+            defaultValue={lesson.duration_seconds ? formatDurationInput(lesson.duration_seconds) : ""}
+            onBlur={(e) => {
+              const secs = parseDurationInput(e.target.value);
+              onUpdate(lesson.id, { duration_seconds: secs ?? null });
+            }}
+            className="h-6 w-20 rounded border border-border/50 bg-background font-mono text-[11px] px-1.5 focus:outline-none focus:ring-1 focus:ring-brand/40 focus:border-brand/40 placeholder:text-muted-foreground/30"
+          />
+        </div>
       </div>
     );
   }
@@ -801,6 +834,10 @@ export function CourseBuilder({
           content: l.content ?? null,
           external_url: l.external_url ?? null,
           section_id: l.section_id ?? null,
+          // Persist manually-entered duration for YouTube lessons
+          ...(l.external_url && !l.mux_playback_id && l.duration_seconds != null
+            ? { duration_seconds: l.duration_seconds }
+            : {}),
         })
         .eq("id", l.id);
     }
