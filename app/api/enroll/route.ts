@@ -28,16 +28,11 @@ export async function POST(req: Request) {
   // Check course exists and is published
   const { data: course } = await supabase
     .from("courses")
-    .select("id, is_published, price")
+    .select("id, is_published")
     .eq("id", courseId)
     .eq("is_published", true)
     .single();
   if (!course) return NextResponse.json({ error: "Course not found" }, { status: 404 });
-
-  // Block free enrollment for paid courses
-  if ((course.price ?? 0) > 0) {
-    return NextResponse.json({ error: "Payment required to enroll in this course." }, { status: 402 });
-  }
 
   // Check prerequisites: student must have completed all required courses
   const { data: prerequisites } = await supabase

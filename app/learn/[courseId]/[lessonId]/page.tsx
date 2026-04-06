@@ -82,14 +82,13 @@ export default async function LearnPage({
       unlockedIds = new Set(lessons.map((l) => l.id));
     }
 
-    // Persist last-visited lesson for enrolled students (fire-and-forget)
+    // Persist last-visited lesson for enrolled students (best-effort, non-blocking)
     if (isEnrolled && !isAdmin) {
-      supabase
+      void supabase
         .from("enrollments")
         .update({ last_visited_lesson_id: lessonId })
         .eq("student_id", user.id)
-        .eq("course_id", courseId)
-        .then(() => {});
+        .eq("course_id", courseId);
     }
   }
 

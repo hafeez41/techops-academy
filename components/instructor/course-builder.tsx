@@ -672,7 +672,7 @@ export function CourseBuilder({
   // Course fields
   const [title, setTitle] = useState(course?.title ?? "");
   const [description, setDescription] = useState(course?.description ?? "");
-  const [price, setPrice] = useState(String(course?.price ?? "0"));
+  const [price] = useState(String(course?.price ?? "0"));
   const [categories, setCategories] = useState<string[]>(course?.categories ?? []);
   const [catOpen, setCatOpen] = useState(false);
   const catRef = useRef<HTMLDivElement>(null);
