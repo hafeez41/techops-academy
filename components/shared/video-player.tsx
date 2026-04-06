@@ -38,20 +38,63 @@ const END_THRESHOLD_S = 10;
 const START_THRESHOLD_S = 3;
 
 /** Custom poster + lazy-iframe YouTube player. Only loads the actual iframe
- *  after the user clicks play — faster page load, no YouTube branding on load. */
+ *  after the user clicks play — faster page load, no YouTube branding on load.
+ *
+ *  Once activated we layer two invisible-to-interaction overlay strips:
+ *  - Top strip  → covers YouTube's channel-info overlay (top-left corner)
+ *  - Bottom end → nothing we can do there without the IFrame API; rel=0 limits
+ *                 related videos to the same channel.
+ *  pointer-events:none means user can still interact with controls below.
+ */
 function YouTubePlayer({ youtubeId }: { youtubeId: string }) {
   const [activated, setActivated] = useState(false);
   const thumbnailUrl = `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
 
   if (activated) {
+    // iv_load_policy=3  → hide annotations
+    // rel=0             → limit end-screen suggestions to same channel
+    // playsinline=1     → stay inline on iOS
+    // color=white       → white progress bar (less YouTube red)
+    // (modestbranding was deprecated by YouTube in 2023 — omitted)
+    const embedSrc =
+      `https://www.youtube-nocookie.com/embed/${youtubeId}` +
+      `?autoplay=1&rel=0&iv_load_policy=3&playsinline=1&color=white`;
+
     return (
-      <iframe
-        src={`https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0&color=white&modestbranding=1`}
-        title="Lesson video"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowFullScreen
-        className="absolute inset-0 w-full h-full border-0"
-      />
+      <div className="absolute inset-0">
+        <iframe
+          src={embedSrc}
+          title="Lesson video"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          className="absolute inset-0 w-full h-full border-0"
+        />
+
+        {/*
+          Cover the YouTube channel-info overlay that appears in the top-left
+          corner. It shows ~36 px tall and spans ~220 px wide.
+          pointer-events:none → clicks pass through to the iframe controls.
+          The gradient fades to transparent so it doesn't hard-edge over the
+          progress bar area at the bottom.
+        */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute top-0 left-0 h-12 w-64 z-10"
+          style={{
+            background:
+              "linear-gradient(to right, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.3) 70%, transparent 100%)",
+          }}
+        />
+
+        {/*
+          Thin strip across the very top edge to fully kill the YouTube logo /
+          channel avatar that sometimes bleeds above the gradient.
+        */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute top-0 left-0 right-0 h-[3px] z-10 bg-black"
+        />
+      </div>
     );
   }
 

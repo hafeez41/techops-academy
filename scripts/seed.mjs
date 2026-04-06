@@ -31,14 +31,21 @@ const USERS = [
   },
 ];
 
-// ─── Old courses to delete ────────────────────────────────────────────────────
+// ─── Slugs to delete (handles both old and current courses) ──────────────────
 
-const OLD_COURSE_IDS = [
-  '94d9973c-f8fb-4e4b-9e46-4dc9e7b29e2f', // Docker & Kubernetes from Scratch
-  'a01dc51b-6537-4e52-94b9-e75086088eac', // Network Security Essentials
-  '54f780ba-ec48-4c6e-9338-906e6a425ce3', // Linux Fundamentals for Beginners
-  'bcede2b9-f877-4a3f-9966-92db68bc8f2f', // AWS Cloud Practitioner Prep
-  '4e502783-13ee-48f8-9fd6-493afd535e11', // Python for System Administrators
+const SLUGS_TO_DELETE = [
+  // original sample courses
+  'docker-kubernetes-scratch',
+  'network-security-essentials',
+  'linux-fundamentals-beginners',
+  'aws-cloud-practitioner',
+  'python-system-administrators',
+  // current seeded courses
+  'linux-cli-fundamentals',
+  'docker-containers',
+  'python-for-sysadmins-v2',
+  // catch any other test courses
+  'python-for-sysadmins',
 ];
 
 // ─── New courses data ─────────────────────────────────────────────────────────
@@ -394,60 +401,34 @@ async function main() {
     log(`  Upserted profile: ${u.name} → role=${u.role}`);
   }
 
-  // ── 3. Delete old courses ────────────────────────────────────────────────
+  // ── 3. Delete old courses by slug ───────────────────────────────────────
   log('\n── Step 3: Deleting old courses ──');
-  const OLD_COURSE_NAMES = {
-    '94d9973c-f8fb-4e4b-9e46-4dc9e7b29e2f': 'Docker & Kubernetes from Scratch',
-    'a01dc51b-6537-4e52-94b9-e75086088eac': 'Network Security Essentials',
-    '54f780ba-ec48-4c6e-9338-906e6a425ce3': 'Linux Fundamentals for Beginners',
-    'bcede2b9-f877-4a3f-9966-92db68bc8f2f': 'AWS Cloud Practitioner Prep',
-    '4e502783-13ee-48f8-9fd6-493afd535e11': 'Python for System Administrators',
-  };
 
-  for (const courseId of OLD_COURSE_IDS) {
-    const name = OLD_COURSE_NAMES[courseId];
-    log(`  Deleting: "${name}" (${courseId})`);
+  for (const slug of SLUGS_TO_DELETE) {
+    const { data: course } = await sb.from('courses').select('id, title').eq('slug', slug).single();
+    if (!course) { log(`  Skipping "${slug}" — not found`); continue; }
 
-    // Delete lessons first (child of course_sections)
-    const { data: sections } = await sb
-      .from('course_sections')
-      .select('id')
-      .eq('course_id', courseId);
+    log(`  Deleting: "${course.title}" (${course.id})`);
 
-    if (sections && sections.length > 0) {
-      const sectionIds = sections.map((s) => s.id);
-      const { error: lessonsError } = await sb
-        .from('lessons')
-        .delete()
-        .in('section_id', sectionIds);
-      if (lessonsError) {
-        log(`    Warning deleting lessons: ${lessonsError.message}`);
-      } else {
-        log(`    Deleted lessons for ${sectionIds.length} section(s)`);
-      }
+    // Cascade delete all related data
+    await Promise.all([
+      sb.from('enrollments').delete().eq('course_id', course.id),
+      sb.from('progress').delete().eq('course_id', course.id),
+      sb.from('reviews').delete().eq('course_id', course.id),
+      sb.from('lesson_unlocks').delete().eq('course_id', course.id),
+      sb.from('course_prerequisites').delete().eq('course_id', course.id),
+    ]);
+
+    const { data: lessons } = await sb.from('lessons').select('id').eq('course_id', course.id);
+    if (lessons?.length) {
+      const lessonIds = lessons.map((l) => l.id);
+      await sb.from('lesson_files').delete().in('lesson_id', lessonIds);
+      await sb.from('progress').delete().in('lesson_id', lessonIds);
     }
-
-    // Delete course_sections
-    const { error: sectionsError } = await sb
-      .from('course_sections')
-      .delete()
-      .eq('course_id', courseId);
-    if (sectionsError) {
-      log(`    Warning deleting sections: ${sectionsError.message}`);
-    } else {
-      log(`    Deleted sections`);
-    }
-
-    // Delete course
-    const { error: courseError } = await sb
-      .from('courses')
-      .delete()
-      .eq('id', courseId);
-    if (courseError) {
-      log(`    Warning deleting course: ${courseError.message}`);
-    } else {
-      log(`    Deleted course (or already gone)`);
-    }
+    await sb.from('lessons').delete().eq('course_id', course.id);
+    await sb.from('course_sections').delete().eq('course_id', course.id);
+    await sb.from('courses').delete().eq('id', course.id);
+    log(`    Done.`);
   }
 
   // ── 4. Create new courses ────────────────────────────────────────────────
@@ -520,15 +501,9 @@ async function main() {
     log(`             UUID    : ${u.id}`);
   }
 
-  log('\nOld courses deleted:');
-  for (const [id, name] of Object.entries({
-    '94d9973c-f8fb-4e4b-9e46-4dc9e7b29e2f': 'Docker & Kubernetes from Scratch',
-    'a01dc51b-6537-4e52-94b9-e75086088eac': 'Network Security Essentials',
-    '54f780ba-ec48-4c6e-9338-906e6a425ce3': 'Linux Fundamentals for Beginners',
-    'bcede2b9-f877-4a3f-9966-92db68bc8f2f': 'AWS Cloud Practitioner Prep',
-    '4e502783-13ee-48f8-9fd6-493afd535e11': 'Python for System Administrators',
-  })) {
-    log(`  - ${name} (${id})`);
+  log('\nOld courses deleted (by slug):');
+  for (const slug of SLUGS_TO_DELETE) {
+    log(`  - ${slug}`);
   }
 
   log('\nNew courses created:');
