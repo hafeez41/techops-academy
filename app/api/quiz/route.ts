@@ -76,7 +76,7 @@ export async function POST(req: Request) {
   const passed = score >= threshold;
 
   // Upsert attempt
-  await supabase.from("quiz_attempts").upsert(
+  const { error: attemptError } = await supabase.from("quiz_attempts").upsert(
     {
       student_id: user.id,
       lesson_id: lessonId,
@@ -88,13 +88,15 @@ export async function POST(req: Request) {
     },
     { onConflict: "student_id,lesson_id" }
   );
+  if (attemptError) return NextResponse.json({ error: attemptError.message }, { status: 500 });
 
   // Auto-mark lesson complete if passed
   if (passed) {
-    await supabase.from("progress").upsert(
+    const { error: progressError } = await supabase.from("progress").upsert(
       { student_id: user.id, lesson_id: lessonId, course_id: courseId },
       { onConflict: "student_id,lesson_id" }
     );
+    if (progressError) return NextResponse.json({ error: progressError.message }, { status: 500 });
   }
 
   return NextResponse.json({ score, passed, correct, total: questions.length });

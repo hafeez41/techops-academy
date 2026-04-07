@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "lessonId and position required" }, { status: 400 });
   }
 
-  await supabase.from("video_positions").upsert(
+  const { error } = await supabase.from("video_positions").upsert(
     {
       student_id: user.id,
       lesson_id: lessonId,
@@ -42,5 +42,6 @@ export async function POST(req: Request) {
     { onConflict: "student_id,lesson_id" }
   );
 
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
 }
