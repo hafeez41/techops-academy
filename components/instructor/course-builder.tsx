@@ -351,23 +351,44 @@ function VideoSourcePicker({
 
       {/* YouTube URL inline input */}
       <YouTubeInput
-        onConfirm={(url) => onUpdate(lesson.id, { external_url: url })}
+        onConfirm={(url, durationSeconds) =>
+          onUpdate(lesson.id, { external_url: url, duration_seconds: durationSeconds })
+        }
       />
     </div>
   );
 }
 
-function YouTubeInput({ onConfirm }: { onConfirm: (url: string) => void }) {
+function YouTubeInput({
+  onConfirm,
+}: {
+  onConfirm: (url: string, durationSeconds: number | null) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
+  const [fetching, setFetching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const youtubeId = value ? extractYouTubeId(value) : null;
   const valid = !!youtubeId;
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!valid) return;
-    onConfirm(value.trim());
+    const url = value.trim();
+    setFetching(true);
+    let duration: number | null = null;
+    try {
+      const res = await fetch(`/api/youtube-duration?url=${encodeURIComponent(url)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.duration_seconds === "number") duration = data.duration_seconds;
+      }
+    } catch {
+      // non-fatal — duration stays null, instructor can set it manually
+    } finally {
+      setFetching(false);
+    }
+    onConfirm(url, duration);
     setValue("");
     setOpen(false);
   };
@@ -400,10 +421,10 @@ function YouTubeInput({ onConfirm }: { onConfirm: (url: string) => void }) {
       </div>
       <button
         onClick={handleConfirm}
-        disabled={!valid}
-        className="h-7 px-2.5 rounded text-[11px] font-mono font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20 enabled:cursor-pointer"
+        disabled={!valid || fetching}
+        className="h-7 px-2.5 rounded text-[11px] font-mono font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20 enabled:cursor-pointer flex items-center gap-1"
       >
-        {valid ? "✓" : "paste"}
+        {fetching ? <Loader2 className="h-3 w-3 animate-spin" /> : valid ? "✓" : "paste"}
       </button>
       <button
         onClick={() => { setOpen(false); setValue(""); }}

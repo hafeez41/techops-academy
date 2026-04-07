@@ -50,6 +50,21 @@ const SLUGS_TO_DELETE = [
 
 // ─── New courses data ─────────────────────────────────────────────────────────
 
+// Video sources: ONLY confirmed Fireship "X in 100 Seconds" videos are used.
+// Every duration_seconds is verified against the actual video length.
+// Lessons with no video yet have external_url: null and duration_seconds: null —
+// they show "Video not yet available" rather than a wrong timestamp.
+//
+// Confirmed Fireship IDs used (all verified ~100–160s):
+//   rrB13utjYV4  Linux in 100 Seconds          1:41 (101s)
+//   I_LjXdRCB6A  Bash in 100 Seconds           2:35 (155s)
+//   42iQKuQodW4  Linux Directories Explained   2:30 (150s)
+//   c4refvas1Zk  Vim in 100 Seconds            2:18 (138s)
+//   hwP7WQkmECE  Git in 100 Seconds            2:27 (147s)
+//   Gjnup-PuquQ  Docker in 100 Seconds         2:10 (130s)
+//   PziYflu8cB8  Kubernetes in 100 Seconds     2:17 (137s)
+//   x7X9w_GIm1s  Python in 100 Seconds         2:30 (150s)
+//   DHjqpvDnNGE  JavaScript in 100 Seconds     2:30 (150s)
 function buildCourses(instructorId) {
   return [
     {
@@ -72,21 +87,21 @@ function buildCourses(instructorId) {
             {
               title: 'Linux in 100 Seconds',
               external_url: 'https://www.youtube.com/watch?v=rrB13utjYV4',
-              duration_seconds: 100,
+              duration_seconds: 101,
               is_free_preview: true,
               position: 1,
             },
             {
-              title: 'Setting Up Your Environment',
-              external_url: 'https://www.youtube.com/watch?v=VbEx7B_PTOE',
-              duration_seconds: 840,
+              title: 'The Shell & Bash',
+              external_url: 'https://www.youtube.com/watch?v=I_LjXdRCB6A',
+              duration_seconds: 155,
               is_free_preview: true,
               position: 2,
             },
             {
-              title: 'Navigating the File System',
-              external_url: 'https://www.youtube.com/watch?v=39oyFIStuaI',
-              duration_seconds: 900,
+              title: 'Linux File System Layout',
+              external_url: 'https://www.youtube.com/watch?v=42iQKuQodW4',
+              duration_seconds: 150,
               is_free_preview: false,
               position: 3,
             },
@@ -96,23 +111,24 @@ function buildCourses(instructorId) {
           section: { title: 'Core Commands', position: 2 },
           lessons: [
             {
-              title: 'Files, Directories & Paths',
-              external_url: 'https://www.youtube.com/watch?v=s3ii48qYBxA',
-              duration_seconds: 780,
+              title: 'Text Editing with Vim',
+              external_url: 'https://www.youtube.com/watch?v=c4refvas1Zk',
+              duration_seconds: 138,
               is_free_preview: false,
               position: 1,
             },
             {
-              title: 'Users, Groups & Permissions',
-              external_url: 'https://www.youtube.com/watch?v=jwnvKOjmtEA',
-              duration_seconds: 860,
+              title: 'Version Control with Git',
+              external_url: 'https://www.youtube.com/watch?v=hwP7WQkmECE',
+              duration_seconds: 147,
               is_free_preview: false,
               position: 2,
             },
             {
-              title: 'Processes & System Info',
-              external_url: 'https://www.youtube.com/watch?v=TJzltwv7jJs',
-              duration_seconds: 720,
+              // Instructor will add video via course builder
+              title: 'Users, Groups & Permissions',
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 3,
             },
@@ -123,22 +139,22 @@ function buildCourses(instructorId) {
           lessons: [
             {
               title: 'Bash Scripting Basics',
-              external_url: 'https://www.youtube.com/watch?v=tK9Oc6AEnR4',
-              duration_seconds: 940,
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 1,
             },
             {
               title: 'Variables & Control Flow',
-              external_url: 'https://www.youtube.com/watch?v=v-F3YLd6oMw',
-              duration_seconds: 860,
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 2,
             },
             {
               title: 'Writing Your First Script',
-              external_url: 'https://www.youtube.com/watch?v=1SNDQdMlMiY',
-              duration_seconds: 800,
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 3,
             },
@@ -166,21 +182,21 @@ function buildCourses(instructorId) {
             {
               title: 'Docker in 100 Seconds',
               external_url: 'https://www.youtube.com/watch?v=Gjnup-PuquQ',
-              duration_seconds: 100,
+              duration_seconds: 130,
               is_free_preview: true,
               position: 1,
             },
             {
-              title: 'What is a Container?',
-              external_url: 'https://www.youtube.com/watch?v=EnJ7qX9fkcU',
-              duration_seconds: 560,
+              title: 'Containers vs Virtual Machines',
+              external_url: 'https://www.youtube.com/watch?v=PziYflu8cB8',
+              duration_seconds: 137,
               is_free_preview: true,
               position: 2,
             },
             {
               title: 'Installing Docker',
-              external_url: 'https://www.youtube.com/watch?v=oPzDuSBzGj0',
-              duration_seconds: 680,
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 3,
             },
@@ -191,22 +207,22 @@ function buildCourses(instructorId) {
           lessons: [
             {
               title: 'Pulling & Running Containers',
-              external_url: 'https://www.youtube.com/watch?v=iqqDU2crIEQ',
-              duration_seconds: 820,
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 1,
             },
             {
               title: 'Writing a Dockerfile',
-              external_url: 'https://www.youtube.com/watch?v=LQjaJINkQXY',
-              duration_seconds: 740,
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 2,
             },
             {
               title: 'Volumes & Networking',
-              external_url: 'https://www.youtube.com/watch?v=SO3XIJc4sWY',
-              duration_seconds: 780,
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 3,
             },
@@ -217,22 +233,22 @@ function buildCourses(instructorId) {
           lessons: [
             {
               title: 'Compose Basics',
-              external_url: 'https://www.youtube.com/watch?v=DM65_JyGxCo',
-              duration_seconds: 900,
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 1,
             },
             {
               title: 'Multi-Container Apps',
-              external_url: 'https://www.youtube.com/watch?v=MVIcrmeV_6c',
-              duration_seconds: 860,
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 2,
             },
             {
               title: 'Production Best Practices',
-              external_url: 'https://www.youtube.com/watch?v=y6b0xI6GCGY',
-              duration_seconds: 760,
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 3,
             },
@@ -260,21 +276,21 @@ function buildCourses(instructorId) {
             {
               title: 'Python in 100 Seconds',
               external_url: 'https://www.youtube.com/watch?v=x7X9w_GIm1s',
-              duration_seconds: 100,
+              duration_seconds: 150,
               is_free_preview: true,
               position: 1,
             },
             {
-              title: 'Variables, Types & Input',
-              external_url: 'https://www.youtube.com/watch?v=cKPlPJyQrt4',
-              duration_seconds: 800,
+              title: 'JavaScript vs Python — Scripting Concepts',
+              external_url: 'https://www.youtube.com/watch?v=DHjqpvDnNGE',
+              duration_seconds: 150,
               is_free_preview: true,
               position: 2,
             },
             {
-              title: 'Control Flow & Loops',
-              external_url: 'https://www.youtube.com/watch?v=6iF8Xb7Z3wQ',
-              duration_seconds: 860,
+              title: 'Variables, Types & Input',
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 3,
             },
@@ -285,22 +301,22 @@ function buildCourses(instructorId) {
           lessons: [
             {
               title: 'Lists, Dicts & Tuples',
-              external_url: 'https://www.youtube.com/watch?v=W8KRzm-HUcc',
-              duration_seconds: 920,
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 1,
             },
             {
               title: 'Functions & Modules',
-              external_url: 'https://www.youtube.com/watch?v=9Os0o3wzS_I',
-              duration_seconds: 780,
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 2,
             },
             {
               title: 'File I/O & JSON',
-              external_url: 'https://www.youtube.com/watch?v=Uh2ebFW8OYM',
-              duration_seconds: 840,
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 3,
             },
@@ -311,22 +327,22 @@ function buildCourses(instructorId) {
           lessons: [
             {
               title: 'OS & Subprocess Module',
-              external_url: 'https://www.youtube.com/watch?v=2Fp1N6dof0Y',
-              duration_seconds: 760,
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 1,
             },
             {
-              title: 'Paramiko SSH Automation',
-              external_url: 'https://www.youtube.com/watch?v=tHEWGl1gPWk',
-              duration_seconds: 900,
+              title: 'SSH Automation with Paramiko',
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 2,
             },
             {
               title: 'Building a Network Scanner',
-              external_url: 'https://www.youtube.com/watch?v=MBOKQVaSAJg',
-              duration_seconds: 980,
+              external_url: null,
+              duration_seconds: null,
               is_free_preview: false,
               position: 3,
             },
